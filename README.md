@@ -7,8 +7,8 @@
         - `CRAN`: R will install the package (with the specific version) from CRAN or MRAN (if the binary package is missing on CRAN)
         - non-CRAN repository specification. Package [remotes](https://github.com/mangothecat/remotes) will be used.
             
-- Install the package of the specific version from CRAN(source) or MRAN(binary)
-  according to the JSON file
+- Install the package of the specific version from CRAN(source) or MRAN(out dated binaries)
+  according to the YAML file. It will search MRAN automatically according to the data from <https://github.com/wush978/metamran>
 
 ## Install
 
