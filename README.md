@@ -10,5 +10,9 @@
 - Install the package of the specific version from CRAN(source) or MRAN(binary)
   according to the JSON file
 
-## Usage
+## Install
 
+```r
+install.packages("remotes")
+remotes::install_github("wush978/rpvm")
+```
