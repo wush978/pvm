@@ -13,6 +13,27 @@
 ## Install
 
 ```r
-install.packages("remotes")
+install.packages("remotes") # Only required if you want to use rpvm with non-CRAN packages
 remotes::install_github("wush978/rpvm")
 ```
+
+## Usage
+
+In the original workspace:
+
+```r
+rpvm::export.packages()
+```
+
+It will check the dependencies and export to `rpvm.yml`.
+Modify the content if you have non-CRAN packages. 
+Change the repository from CRAN to `<username>/<reponame>#<commit-ish>` if it is in github.
+See <https://github.com/r-pkgs/remotes#dependencies> for more specifications of non-CRAN repositories.
+
+Then go to another workspace:
+
+```r
+rpvm::import.packages()
+```
+
+All packages shall be install from CRAN or other place
