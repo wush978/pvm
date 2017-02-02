@@ -2,49 +2,74 @@
 #'
 #'Write the package and its version to a JSON file
 #'
-#'@param file An argument which will be passed to the argument \code{file} of \code{\link[base]{write}}.
+#'@param file \code{NULL}, or a character string naming the file to write.
+#'If \code{NULL}, return a S3 object \code{rpvm}.
 #'@param ... Further arguments passed to \code{\link[utils]{installed.packages}}.
 #'@details
 #'TODO
 #'@export
-export.packages <- function(file = "rpvm.yml", ...) {
-  pkg.list.raw <- installed.packages(...)
-  pkg.list.priority <- pkg.list.raw[,"Priority"]
-  pkg.list.base <- pkg.list.raw[which(pkg.list.priority == "base"),]
-  pkg.list.recommended <- pkg.list.raw[which(pkg.list.priority == "recommended"),]
-  pkg.list.target <- pkg.list.raw[which(is.na(pkg.list.priority)),]
-  # Constructing package graph
-  dict <- new.env()
-  # init nodes for "base" and "R"
-  .create.node(new.env(parent = emptyenv()), "R", sprintf("%s.%s", R.version$major, R.version$minor), "base", dict)
-  .insert.node <- function(pkg.list) {
-    .check.last <- NULL
-    while(!all(.check <- apply(pkg.list, 1, .create.node.character, dict))) {
-      if (isTRUE(all.equal(.check, .check.last))) {
-        stop(sprintf("Requirements of %s are not matched", paste(names(which(!.check.last)), collapse = ",")))
+export.packages <- function(file = "rpvm.yml", rpvm = NULL, ...) {
+  if (is.null(rpvm)) {
+    pkg.list.raw <- installed.packages(...)
+    pkg.list.priority <- pkg.list.raw[,"Priority"]
+    pkg.list.base <- pkg.list.raw[which(pkg.list.priority == "base"),, drop = FALSE]
+    pkg.list.recommended <- pkg.list.raw[which(pkg.list.priority == "recommended"),, drop = FALSE]
+    pkg.list.target <- pkg.list.raw[which(is.na(pkg.list.priority)),, drop = FALSE]
+    # Constructing package graph
+    dict <- new.env()
+    # init nodes for "base" and "R"
+    .create.node(new.env(parent = emptyenv()), "R", sprintf("%s.%s", R.version$major, R.version$minor), "base", dict)
+    .insert.node <- function(pkg.list) {
+      if (nrow(pkg.list) == 0) return(invisible(NULL))
+      .check.last <- NULL
+      while(!all(.check <- apply(pkg.list, 1, .create.node.character, dict))) {
+        if (isTRUE(all.equal(.check, .check.last))) {
+          stop(sprintf("Requirements of %s are not matched", paste(names(which(!.check.last)), collapse = ",")))
+        }
+        .check.last <- .check
       }
-      .check.last <- .check
+      invisible(rpvm)
     }
-    invisible(NULL)
+    .insert.node(pkg.list.base)
+    .insert.node(pkg.list.recommended)
+    .insert.node(pkg.list.target)
+    .truncate(dict)
+    rpvm <- .rpvmrize(dict)
+    schedule <- sort(rpvm)
+    rpvm <- rpvm[unlist(schedule)]
+    rpvm <- .rpvmrize(rpvm)
+    if (is.null(file)) return(invisible(rpvm))
   }
-  .insert.node(pkg.list.base)
-  .insert.node(pkg.list.recommended)
-  .insert.node(pkg.list.target)
-  .truncate(dict)
-  dict.out <- lapply(dict, as.list)
-  yaml <- yaml::as.yaml(dict.out)
+  stopifnot(class(rpvm) == "rpvm")
+  yaml <- yaml::as.yaml(rpvm)
   if (is.character(file)) {
     if (file != "" & (substring(file, 1L, 1L) != "|")) {
       # target is a file
-      tmp.path <- tempfile(fileext = ".yml")
-      write(yaml, file = tmp.path)
-      dict.out2 <- yaml::yaml.load_file(tmp.path)
-      stopifnot(isTRUE(all.equal(dict.out2, dict.out)))
-      file.rename(tmp.path, file)
-      return(invisible(NULL))
+      tmp.path <- tempfile(tmpdir = dirname(file), fileext = ".yml")
+      tryCatch({
+        write(yaml, file = tmp.path)
+        rpvm2 <- yaml::yaml.load_file(tmp.path)
+        rpvm2 <- .rpvmrize(rpvm2)
+        stopifnot(isTRUE(all.equal(rpvm2, rpvm)))
+        file.rename(tmp.path, file)
+      }, finally = {
+        if (file.exists(tmp.path)) unlink(tmp.path, recursive = TRUE, force = TRUE)
+      })
+      return(invisible(rpvm))
     }
   }
-  write(json, file = file)
+  write(yaml, file = file)
+  return(invisible(rpvm))
+}
+
+.rpvmrize <- function(x) {
+  x <- lapply(x, function(x) {
+    x <- as.list(x)
+    class(x) <- "rpvm.package"
+    x
+  })
+  class(x) <- "rpvm"
+  x
 }
 
 .na2empty <- function(x) {
@@ -66,6 +91,7 @@ export.packages <- function(file = "rpvm.yml", ...) {
   retval$version <- version
   retval$priority <- priority
   retval$parent <- list()
+  retval$repository <- "CRAN"
   dict[[name]] <- retval
   TRUE
 }
@@ -90,24 +116,11 @@ export.packages <- function(file = "rpvm.yml", ...) {
   retval$priority <- if (is.na(x["Priority"])) NA else as.vector(x["Priority"])
   retval$parent <- parent
   retval$deps <- deps
+  retval$repository <- "CRAN"
   dict[[retval$name]] <- retval
   TRUE
 }
 
-# .split_dependencies <- function(x) {
-#     .split2 <- function(x) {
-#         x <- sub("[[:space:]]+$", "", x)
-#         x <- unique(sub("^[[:space:]]*(.*)", "\\1", x))
-#         names(x) <- sub("^([[:alnum:].]+).*$", "\\1", x)
-#         x <- x[names(x) != "R"]
-#         x <- x[nzchar(x)]
-#         x <- x[!duplicated(names(x))]
-#         lapply(x, tools:::.split_op_version)
-#     }
-#     if (!any(nzchar(x)))
-#         return(list())
-#     unlist(lapply(strsplit(x, ","), .split2), FALSE, FALSE)
-# }
 .parse.dep <- function(dep) {
   deps <- strsplit(dep, split = ",", fixed = TRUE)[[1]]
   deps <- deps[nzchar(deps)]
