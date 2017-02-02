@@ -7,6 +7,15 @@
     utils::install.packages(pkgs = pkgs, lib = lib, repos = repos, dependencies = FALSE)
   }
 }
+.get.remotes.installer <- function(pkg, lib) {
+  force(pkg)
+  force(lib)
+  repos <- strsplit(pkg$repository, split = "::", fixed = TRUE)[[1]]
+  remotes.env <- asNamespace("remotes")
+  function() {
+    remotes.env[[sprintf("install_%s", repos[1])]](repos[2], lib = lib)
+  }
+}
 
 #'@export
 import.packages <- function(file = "rpvm.yml", ..., repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE, verbose = TRUE, strict.version = TRUE) {
@@ -61,7 +70,6 @@ import.packages <- function(file = "rpvm.yml", ..., repos = getOption("repos"), 
   })
   names(archives) <- names(repos)
   # installation
-  remotes.env <- asNamespace("remotes")
   for(pkg.turn in schedule) {
     if (verbose) cat(sprintf("Installing %s ...\n", paste(pkg.turn, collapse = " ")))
     install.turn <- lapply(pkg.turn, function(pkg.name) {
@@ -100,11 +108,8 @@ import.packages <- function(file = "rpvm.yml", ..., repos = getOption("repos"), 
           stop(sprintf("Failed to find %s (%s) from CRAN", pkg$name, pkg$version))
         } else stop(sprintf("Failed to find %s (%s) from CRAN", pkg$name, pkg$version))
       } else {
-        repos <- strsplit(pkg$repository, split = "::", fixed = TRUE)[[1]]
-        force(repos)
-        return(function() {
-          remotes.env[[sprintf("install_%s", repos[1])]](repos[2], lib = lib.loc)
-        })
+        .retval <- .get.remotes.installer(pkg, lib.loc)
+        return(.retval)
       }
     })
     if (dryrun) {

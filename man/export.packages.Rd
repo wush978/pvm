@@ -4,10 +4,11 @@
 \alias{export.packages}
 \title{Export package list with version}
 \usage{
-export.packages(file = "rpvm.yml", ...)
+export.packages(file = "rpvm.yml", rpvm = NULL, ...)
 }
 \arguments{
-\item{file}{An argument which will be passed to the argument \code{file} of \code{\link[base]{write}}.}
+\item{file}{\code{NULL}, or a character string naming the file to write.
+If \code{NULL}, return a S3 object \code{rpvm}.}
 
 \item{...}{Further arguments passed to \code{\link[utils]{installed.packages}}.}
 }
