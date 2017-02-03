@@ -151,17 +151,6 @@ stats4:
   - name: methods
   - name: stats
   version: 3.3.1
-rpvm:
-  repository: CRAN
-  parent:
-  - yaml
-  - remotes
-  priority: .na
-  name: rpvm
-  deps:
-  - name: yaml
-  - name: remotes
-  version: 0.1.0
 ABCoptim:
   repository: CRAN
   parent: Rcpp
