@@ -1,12 +1,39 @@
-#'Export package list with version
+#'Export packages
 #'
-#'Write the package and its version to a JSON file
+#'Write the package and its version, dependency, priority and repository to a YAML file.
+#'The user can invoke \code{\link{import.packages}} re-install the specific versions of 
+#'the packages from the YAML file.
 #'
 #'@param file \code{NULL}, or a character string naming the file to write.
-#'If \code{NULL}, return a S3 object \code{pvm}.
+#'If \code{NULL}, return a S3 object \code{pvm}. The default is \code{"pvm.yml"}.
+#'@param pvm a S3 object \code{pvm} created by \code{export.packages}.
 #'@param ... Further arguments passed to \code{\link[utils]{installed.packages}}.
 #'@details
-#'TODO
+#'Export a list of packages found via \code{utils::installed.packages(...)}.
+#'
+#'The repository of all packages will be set as \code{"CRAN"} as default. 
+#'If there are some packages not on CRAN, the user should modify the 
+#'generated YAML file and edit the repository to these packages to
+#'appropriate repository. For some non-CRAN examples:
+#'
+#'\describe{
+#'  \item{github}{\code{github::wush978/pvm}}
+#'  \item{bitbucket}{\code{bitbucket::wush978/pvm}}
+#'  \item{url}{\code{url::https://github.com/wush978/pvm/archive/master.zip}}
+#'  \item{svn}{\code{svn::svn://github.com/wush978/pvm/trunk}}
+#'  \item{git}{\code{git::git://github.com/wush978/pvm.git}}
+#'}
+#'
+#'Note that the package \code{remotes} is required to import these non-CRAN packages.
+#'@examples
+#'\dontrun{
+#'library(pvm)
+#'export.packages()
+#'cat(readLines("pvm.yml"), sep = "\n")
+#'}
+#'@seealso Please check \code{\link[remotes]{install_github}}, \code{\link[remotes]{install_bitbucket}}, 
+#'\code{\link[remotes]{install_url}}, \code{\link[remotes]{install_svn}}, and \code{\link[remotes]{install_git}}
+#'for more details of the non-CRAN repository.
 #'@export
 export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   if (is.null(pvm)) {
