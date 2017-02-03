@@ -1,16 +1,16 @@
 #'@export
-print.rpvm.package <- function(x) {
+print.pvm.package <- function(x) {
   mark <- switch(as.character(x$priority), "base" = "*", "recommended" = "+", `NA` = "")
   cat(sprintf("%s (%s)%s repository: %s\n", x$name, x$version, mark, x$repository))
 }
 
 #'@export
-print.rpvm <- function(x) {
+print.pvm <- function(x) {
   lapply(x, print)
 }
 
 #'@export
-sort.rpvm <- function(x, decreasing, pre.installed = character(0)) {
+sort.pvm <- function(x, decreasing, pre.installed = character(0)) {
   target <- setdiff(names(x), pre.installed)
   schedule <- list()
   installed <- c(pre.installed, unlist(schedule))
@@ -29,6 +29,6 @@ sort.rpvm <- function(x, decreasing, pre.installed = character(0)) {
 }
 
 #'@export
-plot.rpvm <- function(x) {
+plot.pvm <- function(x) {
 
 }

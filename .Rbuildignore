@@ -2,6 +2,6 @@
 ^\.Rproj\.user$
 .git
 .gitignore
-rpvm.yml
+pvm.yml
 .lib
 .dev

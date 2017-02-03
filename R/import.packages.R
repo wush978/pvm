@@ -18,18 +18,18 @@
 }
 
 #'@export
-import.packages <- function(file = "rpvm.yml", ..., repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE, verbose = TRUE, strict.version = TRUE) {
-  rpvm <- yaml::yaml.load_file(file)
-  rpvm <- .rpvmrize(rpvm)
+import.packages <- function(file = "pvm.yml", ..., repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE, verbose = TRUE, strict.version = TRUE) {
+  pvm <- yaml::yaml.load_file(file)
+  pvm <- .pvmrize(pvm)
   pkg.list <- installed.packages(...)
   varg <- list(...)
   lib.loc <- if (is.null(varg$lib.loc)) .libPaths()[1] else varg$lib.loc
-  is.target <- logical(length(rpvm))
+  is.target <- logical(length(pvm))
   is.target[] <- TRUE
-  names(is.target) <- names(rpvm)
+  names(is.target) <- names(pvm)
   # remove installed packages / base / recommended
-  for(name in names(rpvm)) {
-    pkg <- rpvm[[name]]
+  for(name in names(pvm)) {
+    pkg <- pvm[[name]]
     if (!is.na(pkg$priority)) {
       if (pkg$priority == "recommended") {
         is.target[name] <- import.recommended
@@ -37,7 +37,7 @@ import.packages <- function(file = "rpvm.yml", ..., repos = getOption("repos"), 
     }
     if (!is.target[name]) next
     if (name %in% rownames(pkg.list)) {
-      version <- package_version(rpvm[[name]]$version)
+      version <- package_version(pvm[[name]]$version)
       installed.version <- package_version(pkg.list[name,"Version"])
       if (strict.version) {
         if (installed.version == version) {
@@ -53,7 +53,7 @@ import.packages <- function(file = "rpvm.yml", ..., repos = getOption("repos"), 
     }
   }
   pre.installed <- names(which(!is.target))
-  schedule <- sort(rpvm, pre.installed = pre.installed)
+  schedule <- sort(pvm, pre.installed = pre.installed)
   # check CRAN
   contrib.urls <- contrib.url(repos, "source")
   names(contrib.urls) <- names(repos)
@@ -73,7 +73,7 @@ import.packages <- function(file = "rpvm.yml", ..., repos = getOption("repos"), 
   for(pkg.turn in schedule) {
     if (verbose) cat(sprintf("Installing %s ...\n", paste(pkg.turn, collapse = " ")))
     install.turn <- lapply(pkg.turn, function(pkg.name) {
-      pkg <- rpvm[[pkg.name]]
+      pkg <- pvm[[pkg.name]]
       if (verbose) cat(sprintf("Installing %s (%s)...\n", pkg$name, pkg$version))
       target.version <- package_version(pkg$version)
       if (pkg$repository == "CRAN") {

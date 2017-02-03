@@ -3,13 +3,13 @@
 #'Write the package and its version to a JSON file
 #'
 #'@param file \code{NULL}, or a character string naming the file to write.
-#'If \code{NULL}, return a S3 object \code{rpvm}.
+#'If \code{NULL}, return a S3 object \code{pvm}.
 #'@param ... Further arguments passed to \code{\link[utils]{installed.packages}}.
 #'@details
 #'TODO
 #'@export
-export.packages <- function(file = "rpvm.yml", rpvm = NULL, ...) {
-  if (is.null(rpvm)) {
+export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
+  if (is.null(pvm)) {
     pkg.list.raw <- installed.packages(...)
     pkg.list.priority <- pkg.list.raw[,"Priority"]
     pkg.list.base <- pkg.list.raw[which(pkg.list.priority == "base"),, drop = FALSE]
@@ -28,47 +28,47 @@ export.packages <- function(file = "rpvm.yml", rpvm = NULL, ...) {
         }
         .check.last <- .check
       }
-      invisible(rpvm)
+      invisible(pvm)
     }
     .insert.node(pkg.list.base)
     .insert.node(pkg.list.recommended)
     .insert.node(pkg.list.target)
     .truncate(dict)
-    rpvm <- .rpvmrize(dict)
-    schedule <- sort(rpvm)
-    rpvm <- rpvm[unlist(schedule)]
-    rpvm <- .rpvmrize(rpvm)
-    if (is.null(file)) return(invisible(rpvm))
+    pvm <- .pvmrize(dict)
+    schedule <- sort(pvm)
+    pvm <- pvm[unlist(schedule)]
+    pvm <- .pvmrize(pvm)
+    if (is.null(file)) return(invisible(pvm))
   }
-  stopifnot(class(rpvm) == "rpvm")
-  yaml <- yaml::as.yaml(rpvm)
+  stopifnot(class(pvm) == "pvm")
+  yaml <- yaml::as.yaml(pvm)
   if (is.character(file)) {
     if (file != "" & (substring(file, 1L, 1L) != "|")) {
       # target is a file
       tmp.path <- tempfile(tmpdir = dirname(file), fileext = ".yml")
       tryCatch({
         write(yaml, file = tmp.path)
-        rpvm2 <- yaml::yaml.load_file(tmp.path)
-        rpvm2 <- .rpvmrize(rpvm2)
-        stopifnot(isTRUE(all.equal(rpvm2, rpvm)))
+        pvm2 <- yaml::yaml.load_file(tmp.path)
+        pvm2 <- .pvmrize(pvm2)
+        stopifnot(isTRUE(all.equal(pvm2, pvm)))
         file.rename(tmp.path, file)
       }, finally = {
         if (file.exists(tmp.path)) unlink(tmp.path, recursive = TRUE, force = TRUE)
       })
-      return(invisible(rpvm))
+      return(invisible(pvm))
     }
   }
   write(yaml, file = file)
-  return(invisible(rpvm))
+  return(invisible(pvm))
 }
 
-.rpvmrize <- function(x) {
+.pvmrize <- function(x) {
   x <- lapply(x, function(x) {
     x <- as.list(x)
-    class(x) <- "rpvm.package"
+    class(x) <- "pvm.package"
     x
   })
-  class(x) <- "rpvm"
+  class(x) <- "pvm"
   x
 }
 
