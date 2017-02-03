@@ -9,7 +9,7 @@ R:
   name: R
   version: 3.3.2
 pvm:
-  repository: svn::svn://github.com/wush978/pvm/trunk
+  repository: svn::https://github.com/wush978/pvm/trunk
   parent: yaml
   priority: .na
   name: pvm

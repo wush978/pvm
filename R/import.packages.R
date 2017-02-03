@@ -135,10 +135,10 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
             .ar <- archives[["CRAN"]][[pkg$name]]
             .filename <- sprintf("%s/%s_%s.tar.gz", pkg$name, pkg$name, pkg$version)
             if (.filename %in% rownames(.ar)) {
-              if (verbose) cat(sprintf("Install %s (%s) from archive of CRAN\n"))
+              if (verbose) cat(sprintf("Install %s (%s) from archive of CRAN\n", pkg$name, pkg$version))
               # utils::download.file(sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), destfile = .pkg.path <- tempfile(fileext = ".tar.gz"))
               # .retval <- .get.utils.installer(.pkg.path, lib.loc, NULL)
-              .retval <- .get.archive.installer(sprintf("%s/%s", contrib.urls["CRAN"], .filename), lib.loc)
+              .retval <- .get.archive.installer(sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), lib.loc)
               return(.retval)
             }
           }
