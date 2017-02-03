@@ -1,0 +1,24 @@
+language: r
+
+matrix:
+  include:
+    - r: oldrel
+      os: linux
+      dist: trusty
+      sudo: false
+    - r: release
+      os: linux
+      dist: trusty
+      sudo: false
+    - r: devel
+      os: linux
+      dist: trusty
+      sudo: false
+    - r: release
+      os: osx
+
+warnings_are_errors: true
+
+env:
+  global:
+    - TEST_PVM=TRUE
