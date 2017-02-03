@@ -185,6 +185,11 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   } else TRUE
 }
 
+.startsWith <- function(x, prefix) {
+  if (nchar(x) < nchar(prefix)) return(FALSE)
+  substring(x, 1, nchar(prefix)) == prefix
+}
+
 .split_op_version <- function (x) {
   pat <- "^([^\\([:space:]]+)[[:space:]]*\\(([^\\)]+)\\).*"
   x1 <- sub(pat, "\\1", x)
@@ -192,8 +197,9 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   if (x2 != x1) {
     pat <- "[[:space:]]*([[<>=!]+)[[:space:]]+(.*)"
     version <- sub(pat, "\\2", x2)
-    if (!base::startsWith(version, "r"))
+    if (!.startsWith(version, "r")) {
       version <- version
+    }
     list(name = x1, op = sub(pat, "\\1", x2), version = version)
   }
   else list(name = x1)
