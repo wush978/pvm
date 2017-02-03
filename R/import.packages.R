@@ -83,7 +83,7 @@ import.packages <- function(file = "rpvm.yml", ..., repos = getOption("repos"), 
         } else if (target.version < package_version(availables[["CRAN"]][pkg$name,"Version"])) {
           # Search archives
           type <- .Platform$pkgType
-          if (type %in% c("win.binary", "mac.binary.mavericks")) {
+          if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks")) {
             if (verbose) cat("Checking if there is a binary package in MRAN...\n")
             meta <- yaml::yaml.load_file(url(sprintf("https://wush978.github.io/metamran/%s/%s/info.yml", pkg$name, pkg$version)))
             Rversion <- sprintf("%s.%s", R.version$major, strsplit(R.version$minor, ".", fixed = TRUE)[[1]][1])
