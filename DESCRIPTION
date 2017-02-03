@@ -5,12 +5,12 @@ Version: 0.1.0
 Author: Wush Wu
 Maintainer: Wush Wu <wush@gmail.com>
 Description: Export the installed packages and their version to a YAML file. 
-Users could import the list and install the binary package with the same version 
-from CRAN or MRAN(the historical snapshots of CRAN). If there is no specific binary
-package, the user could build it from source.
+  Users could import the list and install the binary package with the same version 
+  from CRAN or MRAN(the historical snapshots of CRAN). If there is no specific binary
+  package, the user could build it from source.
 License: GPL(>= 3)
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.0
 Imports: yaml
 Enhances: remotes, igraph

@@ -4,11 +4,11 @@
 \alias{export.packages}
 \title{Export package list with version}
 \usage{
-export.packages(file = "rpvm.yml", rpvm = NULL, ...)
+export.packages(file = "pvm.yml", pvm = NULL, ...)
 }
 \arguments{
 \item{file}{\code{NULL}, or a character string naming the file to write.
-If \code{NULL}, return a S3 object \code{rpvm}.}
+If \code{NULL}, return a S3 object \code{pvm}.}
 
 \item{...}{Further arguments passed to \code{\link[utils]{installed.packages}}.}
 }
@@ -18,4 +18,3 @@ Write the package and its version to a JSON file
 \details{
 TODO
 }
-
