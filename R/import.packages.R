@@ -10,12 +10,15 @@
   }
 }
 
-.get.utils.installer <- function(pkgs, lib, repos) {
+.get.utils.installer <- function(pkgs, lib, repos, type = "source") {
   force(pkgs)
   force(lib)
   force(repos)
   function() {
-    utils::install.packages(pkgs = pkgs, lib = lib, repos = repos, dependencies = FALSE)
+    # .origin.option <- getOption("install.packages.compile.from.source")
+    # options(install.packages.compile.from.source = "never")
+    # on.exit(options(install.packages.compile.from.source = .origin.option))
+    utils::install.packages(pkgs = pkgs, lib = lib, repos = repos, dependencies = FALSE, type = type)
   }
 }
 
@@ -89,11 +92,21 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
   schedule <- sort(pvm, pre.installed = pre.installed)
   # check CRAN
   contrib.urls <- utils::contrib.url(repos, "source")
+  if (repos["CRAN"] == "@CRAN@") {
+    repos <- getOption("repos")
+  }
   names(contrib.urls) <- names(repos)
-  availables <- lapply(contrib.urls, function(contrib.url) {
-    utils::available.packages(contriburl = contrib.url, fields = c("Version", "Published", "Built"))
+  availables.src <- lapply(contrib.urls, function(contrib.url) {
+    utils::available.packages(contriburl = contrib.url)
   })
-  names(availables) <- names(repos)
+  if (base::.Platform$pkgType == "source") {
+    availables.binary <- availables.src
+  } else {
+    availables.binary <- lapply(contrib.url(repos, base::.Platform$pkgType), function(contrib.url) {
+      utils::available.packages(contriburl = contrib.url)
+    })
+  }
+(repos)
   archives <- lapply(contrib.urls, function(contrib.url) {
     tryCatch({
       con <- gzcon(url(sprintf("%s/Meta/archive.rds", contrib.url), "rb"))
@@ -101,7 +114,10 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       readRDS(con)
     }, warning = function(e) list(), error = function(e) list())
   })
-  names(archives) <- names(repos)
+  names(availables.src) <- 
+    names(availables.binary) <- 
+    names(archives) <- 
+    names(repos)
   # installation
   for(pkg.turn in schedule) {
     if (verbose) cat(sprintf("Installing %s ...\n", paste(pkg.turn, collapse = " ")))
@@ -110,11 +126,11 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       if (verbose) cat(sprintf("Installing %s (%s)...\n", pkg$name, pkg$version))
       target.version <- package_version(pkg$version)
       if (pkg$repository == "CRAN") {
-        if (target.version == package_version(availables[["CRAN"]][pkg$name,"Version"])) {
+        if (target.version == package_version(availables.binary[["CRAN"]][pkg$name,"Version"])) {
           if (verbose) cat("Install %s (%s) from CRAN\n", pkg$name, pkg$version)
-          .retval <- .get.utils.installer(pkg$name, lib.loc, repos)
+          .retval <- .get.utils.installer(pkg$name, lib.loc, repos, type = base::.Platform$pkgType)
           return(.retval)
-        } else if (target.version < package_version(availables[["CRAN"]][pkg$name,"Version"])) {
+        } else if (target.version < package_version(availables.binary[["CRAN"]][pkg$name,"Version"])) {
           # Search archives
           type <- .Platform$pkgType
           if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks")) {
@@ -126,7 +142,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
             }, meta)
             if (length(meta.match) == 1) {
               if (verbose) cat(sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", pkg$name, pkg$version, meta.match[[1]]$end, type))
-              .retval <- .get.utils.installer(pkg$name, lib.loc, .mran.url(meta.match[[1]]$end))
+              .retval <- .get.utils.installer(pkg$name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
               return(.retval)
             }
           }
@@ -135,15 +151,19 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
             .ar <- archives[["CRAN"]][[pkg$name]]
             .filename <- sprintf("%s/%s_%s.tar.gz", pkg$name, pkg$name, pkg$version)
             if (.filename %in% rownames(.ar)) {
-              if (verbose) cat(sprintf("Install %s (%s) from archive of CRAN\n", pkg$name, pkg$version))
-              # utils::download.file(sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), destfile = .pkg.path <- tempfile(fileext = ".tar.gz"))
-              # .retval <- .get.utils.installer(.pkg.path, lib.loc, NULL)
+              if (verbose) cat(sprintf("Install source package %s (%s) from archive of CRAN\n", pkg$name, pkg$version))
               .retval <- .get.archive.installer(sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), lib.loc)
               return(.retval)
             }
           }
           stop(sprintf("Failed to find %s (%s) from CRAN", pkg$name, pkg$version))
-        } else stop(sprintf("Failed to find %s (%s) from CRAN", pkg$name, pkg$version))
+        } else if (target.version == package_version(availables.src[["CRAN"]][pkg$name,"Version"])) {
+          if (verbose) cat("Install source package %s (%s) from CRAN\n", pkg$name, pkg$version)
+          .retval <- .get.utils.installer(pkg$name, lib.loc, repos, type = "source")
+          return(.retval)
+        } else {
+          stop(sprintf("Failed to find %s (%s) from CRAN", pkg$name, pkg$version))
+        }
       } else {
         if (verbose) cat(sprintf("Install %s (%s) from %s\n", pkg$name, pkg$version, pkg$repository))
         .retval <- .get.remotes.installer(pkg, lib.loc)
