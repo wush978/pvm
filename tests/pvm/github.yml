@@ -1,0 +1,18 @@
+yaml:
+  repository: CRAN
+  priority: .na
+  name: yaml
+  version: 2.1.14
+R:
+  repository: CRAN
+  priority: base
+  name: R
+  version: 3.3.2
+pvm:
+  repository: github::wush978/pvm
+  parent: yaml
+  priority: .na
+  name: pvm
+  deps:
+  - name: yaml
+  version: 0.1.0

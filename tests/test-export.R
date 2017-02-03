@@ -1,4 +1,5 @@
 
+if (Sys.getenv("TEST_PVM") != "TRUE") quit("no")
 library(pvm)
 options(repos = c(CRAN = "http://cloud.r-project.org/"))
 lib.loc <- tempfile(fileext = ".lib")

@@ -6,6 +6,7 @@ lib.loc <- tempfile(fileext = ".lib")
 lapply(dir("pvm", pattern = "yml", full.names = TRUE), function(path) {
   dir.create(lib.loc, showWarnings = FALSE)
   R_TEST <- Sys.getenv("R_TESTS")
+  cat(sprintf("Importing from %s\n", path))
   Sys.setenv("R_TESTS" = "")
   on.exit({
     unlink(lib.loc, recursive = TRUE)
