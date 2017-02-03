@@ -5,3 +5,4 @@
 pvm.yml
 .lib
 .dev
+.travis.yml

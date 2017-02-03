@@ -10,7 +10,26 @@
 #'@export
 export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   if (is.null(pvm)) {
-    pkg.list.raw <- installed.packages(...)
+    pkg.list.raw <- utils::installed.packages(...)
+    # check duplication of the same package with different version
+    # it will happen if length(lib.loc) > 1
+    pkg.list.raw <- local({
+      pkgs <- rownames(pkg.list.raw)
+      .i <- which(duplicated(pkgs))
+      dpkgs <- unique(pkgs[.i])
+      if (length(.i) == 0) pkg.list.raw else {
+        cat(sprintf("The following packages are duplicated: %s\n", paste(dpkgs, collapse = ",")))
+        cat("Pick the latest version\n")
+        .x1 <- pkg.list.raw[-.i,]
+        .x2 <- do.call(what = rbind, lapply(dpkgs, function(pkg) {
+          .x <- pkg.list.raw[which(pkg == pkgs),]
+          .v <- package_version(.x[,"Version"])
+          .x[which(max(.v) == .v)[1],,drop = FALSE]
+        }))
+        rbind(.x1, .x2)
+      }
+    })
+    
     pkg.list.priority <- pkg.list.raw[,"Priority"]
     pkg.list.base <- pkg.list.raw[which(pkg.list.priority == "base"),, drop = FALSE]
     pkg.list.recommended <- pkg.list.raw[which(pkg.list.priority == "recommended"),, drop = FALSE]
@@ -146,7 +165,7 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   if (x2 != x1) {
     pat <- "[[:space:]]*([[<>=!]+)[[:space:]]+(.*)"
     version <- sub(pat, "\\2", x2)
-    if (!startsWith(version, "r"))
+    if (!base::startsWith(version, "r"))
       version <- version
     list(name = x1, op = sub(pat, "\\1", x2), version = version)
   }

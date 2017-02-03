@@ -21,7 +21,7 @@
 import.packages <- function(file = "pvm.yml", ..., repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE, verbose = TRUE, strict.version = TRUE) {
   pvm <- yaml::yaml.load_file(file)
   pvm <- .pvmrize(pvm)
-  pkg.list <- installed.packages(...)
+  pkg.list <- utils::installed.packages(...)
   varg <- list(...)
   lib.loc <- if (is.null(varg$lib.loc)) .libPaths()[1] else varg$lib.loc
   is.target <- logical(length(pvm))
@@ -55,10 +55,10 @@ import.packages <- function(file = "pvm.yml", ..., repos = getOption("repos"), i
   pre.installed <- names(which(!is.target))
   schedule <- sort(pvm, pre.installed = pre.installed)
   # check CRAN
-  contrib.urls <- contrib.url(repos, "source")
+  contrib.urls <- utils::contrib.url(repos, "source")
   names(contrib.urls) <- names(repos)
   availables <- lapply(contrib.urls, function(contrib.url) {
-    available.packages(contriburl = contrib.url, fields = c("Version", "Published", "Built"))
+    utils::available.packages(contriburl = contrib.url, fields = c("Version", "Published", "Built"))
   })
   names(availables) <- names(repos)
   archives <- lapply(contrib.urls, function(contrib.url) {
@@ -100,7 +100,7 @@ import.packages <- function(file = "pvm.yml", ..., repos = getOption("repos"), i
             .ar <- archives[["CRAN"]][[pkg$name]]
             .filename <- sprintf("%s/%s_%s.tar.gz", pkg$name, pkg$name, pkg$version)
             if (.filename %in% rownames(.ar)) {
-              download.file(sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), destfile = .pkg.path <- tempfile(fileext = ".tar.gz"))
+              utils::download.file(sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), destfile = .pkg.path <- tempfile(fileext = ".tar.gz"))
               .retval <- .get.utils.installer(.pkg.path, lib.loc, NULL)
               return(.retval)
             }
