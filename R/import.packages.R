@@ -127,7 +127,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       target.version <- package_version(pkg$version)
       if (pkg$repository == "CRAN") {
         if (target.version == package_version(availables.binary[["CRAN"]][pkg$name,"Version"])) {
-          if (verbose) cat("Install %s (%s) from CRAN\n", pkg$name, pkg$version)
+          if (verbose) cat(sprintf("Install %s (%s) from CRAN\n", pkg$name, pkg$version))
           .retval <- .get.utils.installer(pkg$name, lib.loc, repos, type = base::.Platform$pkgType)
           return(.retval)
         } else if (target.version < package_version(availables.binary[["CRAN"]][pkg$name,"Version"])) {
@@ -158,7 +158,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
           }
           stop(sprintf("Failed to find %s (%s) from CRAN", pkg$name, pkg$version))
         } else if (target.version == package_version(availables.src[["CRAN"]][pkg$name,"Version"])) {
-          if (verbose) cat("Install source package %s (%s) from CRAN\n", pkg$name, pkg$version)
+          if (verbose) cat(sprintf("Install source package %s (%s) from CRAN\n", pkg$name, pkg$version))
           .retval <- .get.utils.installer(pkg$name, lib.loc, repos, type = "source")
           return(.retval)
         } else {
