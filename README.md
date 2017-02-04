@@ -1,5 +1,13 @@
 # Package Version Manager for R
 
+## Status
+
+- Linux and OS X: [![Travis-ci Status](https://travis-ci.org/wush978/pvm.svg?branch=master)](https://travis-ci.org/wush978/pvm)
+- Windows : [![Build status](https://ci.appveyor.com/api/projects/status/it85uq9rlya3f07t/branch/master?svg=true)](https://ci.appveyor.com/project/wush978/pvm/branch/master)
+
+
+[![Coverage Status](https://img.shields.io/coveralls/wush978/FeatureHashing.svg)](https://coveralls.io/r/wush978/FeatureHashing?branch=master)
+
 ## Feature
 
 - Export the version of installed packages to an [YAML](https://en.wikipedia.org/wiki/YAML) file via `export.packages`.
