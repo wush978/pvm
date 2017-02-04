@@ -29,7 +29,7 @@ after_success:
   - test $TRAVIS_R_VERSION_STRING = 'release' && Rscript -e 'covr::codecov()'
 
 before_script:
-  - test $TRAVIS_R_VERSION_STRING = 'release' && Rscript -e "utils::install.packages('covr')""
+  - test $TRAVIS_R_VERSION_STRING = 'release' && Rscript -e "utils::install.packages('covr')"
 
 after_script:
   - cat pvm.Rcheck/tests/test-import.Rout
