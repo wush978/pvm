@@ -13,7 +13,7 @@
 ## Install
 
 ```r
-install.packages("remotes") # Only required if you want to use pvm with non-CRAN packages
+install.packages("remotes")
 remotes::install_github("wush978/pvm")
 ```
 
@@ -25,10 +25,9 @@ In the original workspace:
 pvm::export.packages()
 ```
 
-It will check the dependencies and export to `pvm.yml`.
-Modify the content if you have non-CRAN packages. 
-Change the repository from CRAN to `<username>/<reponame>#<commit-ish>` if it is in github.
-See <https://github.com/r-pkgs/remotes#dependencies> for more specifications of non-CRAN repositories.
+- It will check the dependencies and export to `pvm.yml`.
+- If you have non-CRAN packages, please modify the content of `pvm.yml`.
+    - Change the repository from CRAN to the appropriate specification. Please see [#non-cran-repositories] for examples.
 
 Then go to another workspace:
 
@@ -36,4 +35,30 @@ Then go to another workspace:
 pvm::import.packages()
 ```
 
-All packages shall be install from CRAN or other place
+- All latest packages will be installed from CRAN
+- On Windows and OS X, `pvm` will search MRAN for binaries of outdated packages and try to install them.
+- If there is no appropriate binary package on MRAN, then `pvm` will install the source package from CRAN. Then the appropriate build tools might be required.
+- Non-CRAN packages will be installed via corresponding `remotes::install_?` function.
+
+## Non-CRAN Repositories
+
+Here are examples of specifications of this package:
+
+- github: `github::wush978/pvm`
+- bitbucket: `bitbucket::wush978/pvm`
+- url: `url::https://github.com/wush978/pvm/archive/master.zip`
+- svn: `svn::svn://github.com/wush978/pvm/trunk`
+- git: `git::git://github.com/wush978/pvm.git`
+
+That is to say, you should see the following paragraph in `pvm.yml`:
+
+```yml
+pvm:
+  repository: github::wush978/pvm
+  parent: yaml
+  priority: .na
+  name: pvm
+  deps:
+  - name: yaml
+  version: 0.1.0
+```
