@@ -28,7 +28,7 @@
   repos <- strsplit(pkg$repository, split = "::", fixed = TRUE)[[1]]
   remotes.env <- asNamespace("remotes")
   function() {
-    remotes.env[[sprintf("install_%s", repos[1])]](repos[2], lib = lib)
+    remotes.env[[sprintf("install_%s", repos[1])]](repos[2], lib = lib, dependencies = FALSE)
   }
 }
 
