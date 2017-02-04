@@ -26,10 +26,10 @@ env:
     - TEST_PVM=TRUE
 
 after_success:
-  - test $TRAVIS_R_VERSION_STRING = 'release' && Rscript -e 'covr::codecov()'
+  - test $TRAVIS_R_VERSION_STRING = 'release' && Rscript -e 'covr::codecov()' || echo "non-release build"
 
 before_script:
-  - test $TRAVIS_R_VERSION_STRING = 'release' && Rscript -e "utils::install.packages('covr')"
+  - test $TRAVIS_R_VERSION_STRING = 'release' && Rscript -e "utils::install.packages('covr')" || echo "non-release build"
 
 after_script:
   - cat pvm.Rcheck/tests/test-import.Rout
