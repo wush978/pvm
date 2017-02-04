@@ -102,7 +102,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
   if (base::.Platform$pkgType == "source") {
     availables.binary <- availables.src
   } else {
-    availables.binary <- lapply(contrib.url(repos, base::.Platform$pkgType), function(contrib.url) {
+    availables.binary <- lapply(utils::contrib.url(repos, base::.Platform$pkgType), function(contrib.url) {
       utils::available.packages(contriburl = contrib.url)
     })
   }
