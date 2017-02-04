@@ -1,0 +1,36 @@
+language: r
+
+matrix:
+  include:
+    - r: oldrel
+      os: linux
+      dist: trusty
+      sudo: false
+    - r: release
+      os: linux
+      dist: trusty
+      sudo: false
+    - r: devel
+      os: linux
+      dist: trusty
+      sudo: false
+    - r: oldrel
+      os: osx
+    - r: release
+      os: osx
+
+warnings_are_errors: true
+
+env:
+  global:
+    - TEST_PVM=TRUE
+
+after_success:
+  - test $TRAVIS_R_VERSION_STRING = 'release' && Rscript -e 'covr::codecov()'
+
+before_script:
+  - ./travis-tool.sh dump_sysinfo
+  - test $TRAVIS_R_VERSION_STRING = 'release' && ./travis-tool.sh install_r covr
+
+after_script:
+  - ./travis-tool.sh dump_logs

@@ -1,16 +1,62 @@
-#'Export package list with version
+#'Export packages
 #'
-#'Write the package and its version to a JSON file
+#'Write the package and its version, dependency, priority and repository to a YAML file.
+#'The user can invoke \code{\link{import.packages}} re-install the specific versions of 
+#'the packages from the YAML file.
 #'
 #'@param file \code{NULL}, or a character string naming the file to write.
-#'If \code{NULL}, return a S3 object \code{pvm}.
+#'If \code{NULL}, return a S3 object \code{pvm}. The default is \code{"pvm.yml"}.
+#'@param pvm a S3 object \code{pvm} created by \code{export.packages}.
 #'@param ... Further arguments passed to \code{\link[utils]{installed.packages}}.
 #'@details
-#'TODO
+#'Export a list of packages found via \code{utils::installed.packages(...)}.
+#'
+#'The repository of all packages will be set as \code{"CRAN"} as default. 
+#'If there are some packages not on CRAN, the user should modify the 
+#'generated YAML file and edit the repository to these packages to
+#'appropriate repository. For some non-CRAN examples:
+#'
+#'\describe{
+#'  \item{github}{\code{github::wush978/pvm}}
+#'  \item{bitbucket}{\code{bitbucket::wush978/pvm}}
+#'  \item{url}{\code{url::https://github.com/wush978/pvm/archive/master.zip}}
+#'  \item{svn}{\code{svn::svn://github.com/wush978/pvm/trunk}}
+#'  \item{git}{\code{git::git://github.com/wush978/pvm.git}}
+#'}
+#'
+#'Note that the package \code{remotes} is required to import these non-CRAN packages.
+#'@examples
+#'\dontrun{
+#'library(pvm)
+#'export.packages()
+#'cat(readLines("pvm.yml"), sep = "\n")
+#'}
+#'@seealso Please check \code{\link[remotes]{install_github}}, \code{\link[remotes]{install_bitbucket}}, 
+#'\code{\link[remotes]{install_url}}, \code{\link[remotes]{install_svn}}, and \code{\link[remotes]{install_git}}
+#'for more details of the non-CRAN repository.
 #'@export
 export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   if (is.null(pvm)) {
-    pkg.list.raw <- installed.packages(...)
+    pkg.list.raw <- utils::installed.packages(...)
+    # check duplication of the same package with different version
+    # it will happen if length(lib.loc) > 1
+    pkg.list.raw <- local({
+      pkgs <- rownames(pkg.list.raw)
+      .i <- which(duplicated(pkgs))
+      dpkgs <- unique(pkgs[.i])
+      if (length(.i) == 0) pkg.list.raw else {
+        cat(sprintf("The following packages are duplicated: %s\n", paste(dpkgs, collapse = ",")))
+        cat("Pick the latest version\n")
+        .x1 <- pkg.list.raw[-.i,]
+        .x2 <- do.call(what = rbind, lapply(dpkgs, function(pkg) {
+          .x <- pkg.list.raw[which(pkg == pkgs),]
+          .v <- package_version(.x[,"Version"])
+          .x[which(max(.v) == .v)[1],,drop = FALSE]
+        }))
+        rbind(.x1, .x2)
+      }
+    })
+    
     pkg.list.priority <- pkg.list.raw[,"Priority"]
     pkg.list.base <- pkg.list.raw[which(pkg.list.priority == "base"),, drop = FALSE]
     pkg.list.recommended <- pkg.list.raw[which(pkg.list.priority == "recommended"),, drop = FALSE]
@@ -139,6 +185,11 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   } else TRUE
 }
 
+.startsWith <- function(x, prefix) {
+  if (nchar(x) < nchar(prefix)) return(FALSE)
+  substring(x, 1, nchar(prefix)) == prefix
+}
+
 .split_op_version <- function (x) {
   pat <- "^([^\\([:space:]]+)[[:space:]]*\\(([^\\)]+)\\).*"
   x1 <- sub(pat, "\\1", x)
@@ -146,8 +197,9 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   if (x2 != x1) {
     pat <- "[[:space:]]*([[<>=!]+)[[:space:]]+(.*)"
     version <- sub(pat, "\\2", x2)
-    if (!startsWith(version, "r"))
+    if (!.startsWith(version, "r")) {
       version <- version
+    }
     list(name = x1, op = sub(pat, "\\1", x2), version = version)
   }
   else list(name = x1)
