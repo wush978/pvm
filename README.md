@@ -2,13 +2,9 @@
 
 ## Feature
 
-- Record the version of installed packages (listed by `installed.packages`) to an [YAML](https://en.wikipedia.org/wiki/YAML) file.
-    - The repository property instructs how R should install the specific package. The possible values are:
-        - `CRAN`: R will install the package (with the specific version) from CRAN or MRAN (if the binary package is missing on CRAN)
-        - non-CRAN repository specification. Package [remotes](https://github.com/mangothecat/remotes) will be used.
-            
-- Install the package of the specific version from CRAN(source) or MRAN(out dated binaries)
-  according to the YAML file. It will search MRAN automatically according to the data from <https://github.com/wush978/metamran>
+- Export the version of installed packages to an [YAML](https://en.wikipedia.org/wiki/YAML) file via `export.packages`.
+- Install the exported packages with given version from CRAN(latest or source) or [MRAN](https://mran.revolutionanalytics.com/)(outdated binary)
+  according to the YAML file via `import.packages`.
 
 ## Install
 
