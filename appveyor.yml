@@ -41,3 +41,9 @@ artifacts:
 
 environment:
   TEST_PVM: TRUE
+  matrix:
+    - R_VERSION: patched
+    - R_VERSION: oldrel
+
+matrix:
+  fast_finish: true
