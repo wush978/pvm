@@ -40,4 +40,4 @@ artifacts:
     name: Bits
 
 environment:
-  - TEST_PVM: TRUE
+  TEST_PVM: TRUE
