@@ -6,3 +6,4 @@ pvm.yml
 .lib
 .dev
 .travis.yml
+appveyor.yml
