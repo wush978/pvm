@@ -32,6 +32,9 @@
   }
 }
 
+.meta <- new.env()
+data(metamran, envir = .meta)
+
 #'Import packages
 #'
 #'Install the package with the specific version according to the YAML file which is created by \code{\link{export.packages}}.
@@ -134,16 +137,30 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
           # Search archives
           type <- .Platform$pkgType
           if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks")) {
-            if (verbose) cat("Checking if there is a binary package in MRAN...\n")
-            meta <- yaml::yaml.load_file(url(sprintf("https://wush978.github.io/metamran/%s/%s/info.yml", pkg$name, pkg$version)))
+            if (verbose) cat("Checking if there is a binary package in MRAN from local dataset\n")
             Rversion <- sprintf("%s.%s", R.version$major, strsplit(R.version$minor, ".", fixed = TRUE)[[1]][1])
-            meta.match <- Filter(function(x) {
-              x$type == type & x$Rversion == Rversion
-            }, meta)
-            if (length(meta.match) == 1) {
-              if (verbose) cat(sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", pkg$name, pkg$version, meta.match[[1]]$end, type))
-              .retval <- .get.utils.installer(pkg$name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
-              return(.retval)
+            meta <- .meta$metamran[[sprintf("%s_%s", pkg$name, pkg$version)]]
+            if (!is.null(meta)) {
+              meta.match <- Filter(function(x) {
+                x$type == type & x$Rversion == Rversion
+              }, meta)
+              if (length(meta.match) == 1) {
+                if (verbose) cat(sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", pkg$name, pkg$version, meta.match[[1]]$end, type))
+                .retval <- .get.utils.installer(pkg$name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
+                return(.retval)
+              }
+            }
+            if (verbose) cat("Checking if there is a binary package in MRAN from the internet\n")
+            meta <- try(yaml::yaml.load_file(url(sprintf("https://wush978.github.io/metamran/%s/%s/info.yml", pkg$name, pkg$version))), silent = TRUE)
+            if (class(meta)[1] != "try-error") {
+              meta.match <- Filter(function(x) {
+                x$type == type & x$Rversion == Rversion
+              }, meta)
+              if (length(meta.match) == 1) {
+                if (verbose) cat(sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", pkg$name, pkg$version, meta.match[[1]]$end, type))
+                .retval <- .get.utils.installer(pkg$name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
+                return(.retval)
+              }
             }
           }
           if (verbose) cat("Checking if there is a source package in CRAN...\n")
@@ -179,3 +196,10 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
     }
   }
 }
+
+#'@name metamran
+#'@title The Index of packages on MRAN Daily Snapshots
+#'@description
+#'The dataset contains the beginning dates and ending dates of all versioned packages on CRAN. 
+#'@source \url{https://mran.revolutionanalytics.com} and \url{https://github.com/wush978/metamran}
+NULL

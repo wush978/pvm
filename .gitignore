@@ -2,5 +2,10 @@
 .Rhistory
 .RData
 .Ruserdata
+.lib
+.dev
+.Rprofile
 pvm.Rproj
 pvm.yml
+build_metamran/gh-pages
+build_metamran/.lib
