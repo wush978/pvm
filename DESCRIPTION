@@ -14,5 +14,4 @@ LazyData: true
 RoxygenNote: 6.0.0
 Depends: R(>= 2.10)
 Imports: yaml
-Suggests: remotes
-Enhances: igraph
+Suggests: remotes, git2r

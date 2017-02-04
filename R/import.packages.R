@@ -33,7 +33,56 @@
 }
 
 .meta <- new.env()
-data(metamran, envir = .meta)
+.check_metamran <- function() {
+  metamran.path <- system.file("metamran.rda", package = "pvm")
+  if (metamran.path != "") {
+    load(metamran.path, envir = .meta)
+  }
+  if (is.null(.meta$metamran)) data(metamran, package = "pvm", envir = .meta)
+}
+
+#'Update the Index of packages on MRAN Daily Snapshots
+#'
+#'Download the latest index from github.
+#'
+#'@param verbose logical value. If \code{TRUE}, show more information.
+#'
+#'@details
+#'The package \code{git2r} is required to update.
+#'@export
+metamran.update <- function(verbose = TRUE) {
+  .branch <- readLines("https://api.github.com/repos/wush978/metamran/git/refs/heads/gh-pages", warn = FALSE)
+  .branch <- strsplit(.branch, ",")[[1]]
+  .commit.url <- regmatches(.branch, regexec('\\"url":"([^"]+)"', .branch))
+  .commit.url <- tail(Filter(f = function(x) length(x) > 1, .commit.url), 1)[[1]][2]
+  .commit <- readLines(.commit.url, warn = FALSE)
+  .date <- regmatches(.commit, regexec('"message":"Update: (.{10})"', .commit))[[1]][2]
+  .date <- as.Date(.date)
+  if (verbose) cat(sprintf("The updating date of remote dataset: %s\n", .date))
+  stopifnot(!is.na(.date))
+  .check_metamran()
+  if (verbose) cat(sprintf("The updating date of local dataset: %s\n", .meta$metamran$.date))
+  if (.date > .meta$metamran$.date) {
+    if (verbose) cat("Updating data...\n")
+    git2r::clone(url = "https://github.com/wush978/metamran", branch = "gh-pages", local_path = repo.path <- tempfile())
+    infos <- dir(repo.path, pattern = "info.yml", full.names = TRUE, recursive = TRUE)
+    metamran <- new.env(parent = emptyenv())
+    if (verbose) pb <- txtProgressBar(max = length(infos), style = 3)
+    for(info in infos) {
+      version <- basename(dirname(info))
+      package <- basename(dirname(dirname(info)))
+      obj <- yaml::yaml.load_file(info)
+      key <- sprintf("%s_%s", package, version)
+      assign(key, obj, envir = metamran)
+      if (verbose) setTxtProgressBar(pb, getTxtProgressBar(pb) + 1)
+    }
+    if (verbose) close(pb)
+    assign(".date", .date, envir = metamran)
+    save(metamran, file = file.path(system.file(package = "pvm"), "metamran.rda"), compress = "bzip2")
+    if (verbose) cat("Done\n")
+  }
+  invisible(NULL)
+}
 
 #'Import packages
 #'
@@ -139,6 +188,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
           if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks")) {
             if (verbose) cat("Checking if there is a binary package in MRAN from local dataset\n")
             Rversion <- sprintf("%s.%s", R.version$major, strsplit(R.version$minor, ".", fixed = TRUE)[[1]][1])
+            .check_metamran()
             meta <- .meta$metamran[[sprintf("%s_%s", pkg$name, pkg$version)]]
             if (!is.null(meta)) {
               meta.match <- Filter(function(x) {
