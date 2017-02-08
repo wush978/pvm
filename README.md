@@ -10,8 +10,8 @@
 
 ## Feature
 
-- Export the version of installed packages to an [YAML](https://en.wikipedia.org/wiki/YAML) file via `export.packages`.
-- Install the exported packages with given version from CRAN(latest or source) or [MRAN](https://mran.revolutionanalytics.com/)(outdated binary)
+- Export the version of installed packages to a simple [YAML](https://en.wikipedia.org/wiki/YAML) file via `export.packages`.
+- Install the exported packages with given version and their dependencies from CRAN(latest or source) or [MRAN](https://mran.revolutionanalytics.com/)(outdated binary)
   according to the YAML file via `import.packages`.
 
 ## Install
@@ -30,8 +30,18 @@ pvm::export.packages()
 ```
 
 - It will check the dependencies and export to `pvm.yml`.
+- The exported yaml, the `pvm.yml`, file should be like this:
+```
+ABCoptim: 0.13.11
+Rcpp: 0.12.9
+```
+- Only version is specified if you want to install the package from CRAN/MRAN
 - If you have non-CRAN packages, please modify the content of `pvm.yml`.
     - Change the repository from CRAN to the appropriate specification. Please see [#non-cran-repositories] for examples.
+    - Some `DESCRIPTION` files of the local package will include the non-CRAN info. `export.packages` will automatically export
+them as non-CRAN.
+
+
 
 Then go to another workspace:
 
@@ -39,10 +49,10 @@ Then go to another workspace:
 pvm::import.packages()
 ```
 
-- All latest packages will be installed from CRAN
-- On Windows and OS X, `pvm` will search MRAN for binaries of outdated packages and try to install them.
-- If there is no appropriate binary package on MRAN, then `pvm` will install the source package from CRAN. Then the appropriate build tools might be required.
-- Non-CRAN packages will be installed via corresponding `remotes::install_?` function.
+- Install the packages via the followign rules
+    - Search the binary/source package from CRAN/MRAN if the version is specified in the YAML. The users could specify if they want to install them from `source` or `both`.
+    - List all non-listed dependencies and install the latest version of them from CRAN
+    - Install the specified packages in YAML with the specified version from CRAN/MRAN/non-CRAN repositories
 
 ## Non-CRAN Repositories
 
@@ -54,15 +64,8 @@ Here are examples of specifications of this package:
 - svn: `svn::svn://github.com/wush978/pvm/trunk`
 - git: `git::git://github.com/wush978/pvm.git`
 
-That is to say, you should see the following paragraph in `pvm.yml`:
+That is to say, you should see the following paragraph in `pvm.yml` if you export a non-CRAN `pvm` package:
 
 ```yml
-pvm:
-  repository: github::wush978/pvm
-  parent: yaml
-  priority: .na
-  name: pvm
-  deps:
-  - name: yaml
-  version: 0.1.0
+pvm: github::wush978/pvm
 ```
