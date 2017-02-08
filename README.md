@@ -30,10 +30,18 @@ pvm::export.packages()
 ```
 
 - It will check the dependencies and export to `pvm.yml`.
+- The exported yaml, the `pvm.yml`, file should be like this:
+```
+ABCoptim: 0.13.11
+Rcpp: 0.12.9
+```
+- Only version is specified if you want to install the package from CRAN/MRAN
 - If you have non-CRAN packages, please modify the content of `pvm.yml`.
     - Change the repository from CRAN to the appropriate specification. Please see [#non-cran-repositories] for examples.
     - Some `DESCRIPTION` files of the local package will include the non-CRAN info. `export.packages` will automatically export
-    them as non-CRAN.
+them as non-CRAN.
+
+
 
 Then go to another workspace:
 
