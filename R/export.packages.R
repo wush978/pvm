@@ -1,4 +1,16 @@
-#'Export packages
+.to.yaml <- function(pvm) {
+  stopifnot(class(pvm)[1] == "pvm")
+  retval <- lapply(pvm, function(pkg) {
+    if (pkg$repository == "CRAN") {
+      sprintf("%s: %s", pkg$name, pkg$version)
+    } else {
+      sprintf("%s: %s", pkg$name, pkg$repository)
+    }
+  })
+  paste(retval, collapse = "\n")
+}
+
+#'Export Packages
 #'
 #'Write the package and its version, dependency, priority and repository to a YAML file.
 #'The user can invoke \code{\link{import.packages}} re-install the specific versions of 
@@ -87,16 +99,13 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
     if (is.null(file)) return(invisible(pvm))
   }
   stopifnot(class(pvm) == "pvm")
-  yaml <- yaml::as.yaml(pvm)
+  yaml <- .to.yaml(pvm)
   if (is.character(file)) {
     if (file != "" & (substring(file, 1L, 1L) != "|")) {
       # target is a file
       tmp.path <- tempfile(tmpdir = dirname(file), fileext = ".yml")
       tryCatch({
         write(yaml, file = tmp.path)
-        pvm2 <- yaml::yaml.load_file(tmp.path)
-        pvm2 <- .pvmrize(pvm2)
-        stopifnot(isTRUE(all.equal(pvm2, pvm)))
         file.rename(tmp.path, file)
       }, finally = {
         if (file.exists(tmp.path)) unlink(tmp.path, recursive = TRUE, force = TRUE)
