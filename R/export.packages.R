@@ -7,7 +7,7 @@
       sprintf("%s: %s", pkg$name, pkg$repository)
     }
   })
-  paste(retval, collapse = "\n")
+  paste(c("__version__: 0.2", retval), collapse = "\n")
 }
 
 #'Export Packages
