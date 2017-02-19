@@ -1,3 +1,35 @@
+.trimws <- if (exists("trimws", envir = baseenv())) base::trimws else function(x) {
+  mysub <- function(re, x) sub(re, "", x, perl = TRUE)
+  mysub("[ \t\r\n]+$", mysub("^[ \t\r\n]+", x))
+}
+
+.upgrade.yaml <- function(file) {
+  # check version
+  src <- readLines(file)
+  if (substring(src[1], 1, 13) == "__version__: ") {
+    version <- base::package_version(substring(src[1], 14, nchar(src[1])))
+  } else {
+    version <- base::package_version("0.1")
+  }
+  if (version < base::package_version("0.2")) {
+    pvm.src <- yaml::yaml.load_file(file)
+    pvm.dst <- sapply(pvm.src, function(x) {
+      if (x$repository == "CRAN") x$version else x$repository
+    })
+    names(pvm.dst) <- sapply(pvm.src, "[[", "name")
+    pvm.dst
+  } else {
+    tokens <- strsplit(tail(src, -1), split = ":", fixed = TRUE)
+    pvm.dst <- sapply(tokens, function(x) {
+      .trimws(x[[2]])
+    })
+    names(pvm.dst) <- sapply(tokens, function(x) {
+      .trimws(x[[1]])
+    })
+    pvm.dst
+  }
+}
+
 .to.yaml <- function(pvm) {
   stopifnot(class(pvm)[1] == "pvm")
   retval <- lapply(pvm, function(pkg) {
