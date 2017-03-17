@@ -17,30 +17,73 @@
       if (x$repository == "CRAN") x$version else x$repository
     })
     names(pvm.dst) <- sapply(pvm.src, "[[", "name")
+    attr(pvm.dst, "order") <- seq_along(pvm.dst)
     pvm.dst
   } else {
-    tokens <- strsplit(tail(src, -1), split = ":", fixed = TRUE)
-    pvm.dst <- sapply(tokens, function(x) {
-      .trimws(x[[2]])
-    })
-    names(pvm.dst) <- sapply(tokens, function(x) {
-      .trimws(x[[1]])
-    })
+    src <- tail(src, -1)
+    current.order <- NA
+    is.order <- grepl("^(\\d+):$", src)
+    first.colon <- sapply(gregexpr("^[^:]+:", src), attr, "match.length")
+    header <- substring(src, 1, first.colon - 1)
+    header <- .trimws(header)
+    tailer<- substring(src, first.colon + 1, nchar(src))
+    tailer <- .trimws(tailer)
+    pvm.dst <- tailer[!is.order]
+    names(pvm.dst) <- header[!is.order]
+    pvm.order <- numeric(length(pvm.dst))
+    j <- 1
+    current.order <- NA
+    for(i in seq_along(src)) {
+      if (is.order[i]) {
+        current.order <- as.integer(header[i])
+        next
+      }
+      pvm.order[j] <- current.order
+      j <- j + 1
+    }
+    stopifnot(!any(is.na(pvm.order)))
+    attr(pvm.dst, "order") <- pvm.order
     pvm.dst
   }
 }
 
 .to.yaml <- function(pvm) {
   stopifnot(class(pvm)[1] == "pvm")
+  pvm.order <- sapply(pvm, attr, "order")
+  if (!all(!is.null(pvm.order))) {
+    schedule <- sort(pvm)
+    pvm <- pvm[unlist(schedule)]
+    pvm <- .pvmrize(pvm, schedule)
+  }
+  if (any(diff(sapply(pvm, attr, "order")) < 0)) {
+    schedule <- sort(pvm)
+    pvm <- pvm[unlist(schedule)]
+    pvm <- .pvmrize(pvm, schedule)
+  }
+  current.order <- 0
   retval <- lapply(pvm, function(pkg) {
-    if (pkg$repository == "CRAN") {
-      sprintf("%s: %s", pkg$name, pkg$version)
+    if (attr(pkg, "order") != current.order) {
+      current.order <<- attr(pkg, "order")
+      header <- sprintf("%d:\n", current.order)
     } else {
-      sprintf("%s: %s", pkg$name, pkg$repository)
+      header <- ""
+    }
+    if (pkg$repository == "CRAN") {
+      sprintf("%s  %s: %s", header, pkg$name, pkg$version)
+    } else {
+      sprintf("%s  %s: %s", header, pkg$name, pkg$repository)
     }
   })
   paste(c("__version__: 0.2", retval), collapse = "\n")
 }
+
+.remote.fields <- unique(
+  paste0("Remote", 
+         c("Type", "Host", "Repo", "Subdir", "Username", "Ref", "Sha", "Url", "SvnSubdir", "Revision", "Args", "Branch", "Config",
+           "Mirror", "Release", "Password", "Repos", "PkgType")
+         )
+  )
+.check.fields <-  c("Package", "Version", "Priority", "Depends", "Imports", "LinkingTo", "Suggests", "Enhances", .remote.fields)
 
 #'Export Packages
 #'
@@ -81,7 +124,7 @@
 #'@export
 export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   if (is.null(pvm)) {
-    pkg.list.raw <- utils::installed.packages(...)
+    pkg.list.raw <- utils::installed.packages(..., fields = .check.fields)
     # check duplication of the same package with different version
     # it will happen if length(lib.loc) > 1
     pkg.list.raw <- local({
@@ -114,6 +157,7 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
       .check.last <- NULL
       while(!all(.check <- apply(pkg.list, 1, .create.node.character, dict))) {
         if (isTRUE(all.equal(.check, .check.last))) {
+          .create.node.character(pkg.list[1,], dict, TRUE)
           stop(sprintf("Requirements of %s are not matched", paste(names(which(!.check.last)), collapse = ",")))
         }
         .check.last <- .check
@@ -124,10 +168,14 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
     .insert.node(pkg.list.recommended)
     .insert.node(pkg.list.target)
     .truncate(dict)
-    pvm <- .pvmrize(dict)
+    pvm <- .pvmrize(dict, NULL)
     schedule <- sort(pvm)
     pvm <- pvm[unlist(schedule)]
-    pvm <- .pvmrize(pvm)
+    pvm <- .pvmrize(pvm, schedule)
+    # remove base packages
+    pvm <- .pvmrize(Filter(function(x) {
+      if (is.na(x$priority)) TRUE else x$priority != "base"
+    }, pvm))
     if (is.null(file)) return(invisible(pvm))
   }
   stopifnot(class(pvm) == "pvm")
@@ -149,13 +197,24 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   return(invisible(pvm))
 }
 
-.pvmrize <- function(x) {
+.pvmrize <- function(x, schedule = NULL) {
   x <- lapply(x, function(x) {
     x <- as.list(x)
     class(x) <- "pvm.package"
     x
   })
   class(x) <- "pvm"
+  if (!is.null(schedule)) {
+    i.start <- 1
+    i.end.vec <- cumsum(sapply(schedule, length))
+    for(j in seq_along(i.end.vec)) {
+      i.end <- i.end.vec[j]
+      for(i in seq(i.start, i.end, by = 1)) {
+        attr(x[[i]], "order") <- j
+      }
+      i.start <- i.end + 1
+    }
+  }
   x
 }
 
@@ -183,13 +242,15 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   TRUE
 }
 
-.create.node.character <- function(x, dict) {
+.create.node.character <- function(x, dict, error.out = FALSE) {
   if (!is.null(dict[[x["Package"]]])) TRUE
   dep <- .na2empty(x[c("Depends", "Imports", "LinkingTo")])
   dep <- Reduce(.join.dependency, dep)
   deps <- .parse.dep(dep)
   if (length(deps) > 0) {
     if (!all(sapply(deps, .check.dep, dict = dict))) {
+      required.pkgs <- sapply(deps, "[[", "name")[!sapply(deps, .check.dep, dict = dict)]
+      if (error.out) stop(sprintf("The package %s requires following missing packages: %s", x["Package"], paste(required.pkgs, collapse = ",")))
       return(FALSE)
     }
     parent <- sapply(deps, "[[", "name")
@@ -203,7 +264,33 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   retval$priority <- if (is.na(x["Priority"])) NA else as.vector(x["Priority"])
   retval$parent <- parent
   retval$deps <- deps
-  retval$repository <- "CRAN"
+  if (!is.na(x["RemoteType"])) {
+    retval$repository <- switch(x["RemoteType"], 
+                          "github" = local({
+                            if (is.na(x["RemoteSubdir"])) {
+                              sprintf("github::repo=%s/%s@%s", x["RemoteUsername"], x["RemoteRepo"], x["RemoteSha"])
+                            } else {
+                              sprintf("github::repo=%s/%s/%s@%s", x["RemoteUsername"], x["RemoteRepo"], x["RemoteSubdir"], x["RemoteSha"])
+                            }}),
+                          "git" = stop("TODO:git"),
+                          "bitbucket" = stop("TODO:bitbucket"),
+                          "svn" = stop("TODO:svn"),
+                          "local" = stop("TODO:local"),
+                          "url" = local({
+                            args <- list(url = x["RemoteUrl"], subdir = x["RemoteSubdir"])
+                            args <- Filter(function(x) !is.na(x), args)
+                            args <- paste(sapply(names(args), function(name) {
+                              sprintf("%s=%s", name, args[[name]])
+                            }), collapse = "&")
+                            sprintf("url::%s", args)
+                          }),
+                          "bioc" = stop("TODO:bioc"),
+                          stop("Unknown remote type")
+    )
+  } else {
+    retval$repository <- "CRAN"
+  }
+  # retval$repository <- "CRAN"
   dict[[retval$name]] <- retval
   TRUE
 }

@@ -25,10 +25,19 @@
 .get.remotes.installer <- function(repo, lib) {
   force(repo)
   force(lib)
-  repo <- strsplit(repo, split = "::", fixed = TRUE)[[1]]
+  argv <- strsplit(repo, split = "::", fixed = TRUE)[[1]]
+  method <- argv[1]
+  tokens <- strsplit(argv[2], split = "&", fixed = TRUE)
+  retval <- list()
+  for(token in tokens) {
+    kv <- strsplit(token, split = "=", fixed = TRUE)[[1]]
+    retval[[kv[1]]] <- kv[2]
+  }
+  retval[["lib"]] <- lib
+  retval[["dependencies"]] <- FALSE
   remotes.env <- asNamespace("remotes")
   function() {
-    remotes.env[[sprintf("install_%s", repo[1])]](repo[2], lib = lib, dependencies = FALSE)
+    do.call(remotes.env[[sprintf("install_%s", method)]], retval)
   }
 }
 
@@ -179,7 +188,8 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       return(NULL)
     }
     if (verbose) base::cat(base::sprintf("Installing %s (%s) ...\n", name, pvm[name]))
-    version <- package_version(pvm[name])
+    version <- try(package_version(pvm[name]), silent = TRUE)
+    if (class(version)[1] == "try-error") version <- NA
     if (!is.na(version)) {
       # CRAN
       if (name %in% rownames(availables.binary[["CRAN"]])) {
