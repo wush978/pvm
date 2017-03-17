@@ -149,7 +149,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       }
       target.version <- package_version(pvm[name])
       current.version <- package_version(pkg.list[name, "Version"])
-      if (target.version == current.version) {
+      if (!is.na(target.version)) if (target.version == current.version) {
         is.target[name] <- FALSE
         next
       }
