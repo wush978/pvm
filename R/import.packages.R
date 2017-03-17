@@ -97,6 +97,13 @@ metamran.update <- function(verbose = TRUE) {
   if (is.na(v1)) FALSE else if (is.na(v2)) FALSE else operator(v1, v2)
 }
 
+package_version <- function(x) {
+  retval <- try(base::package_version(x), silent = TRUE)
+  if (class(retval)[1] == "try-error") {
+    NA
+  } else retval
+}
+
 #'Import packages
 #'
 #'Install the package with the specific version according to the YAML file which is created by \code{\link{export.packages}}.
@@ -188,8 +195,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       return(NULL)
     }
     if (verbose) base::cat(base::sprintf("Installing %s (%s) ...\n", name, pvm[name]))
-    version <- try(package_version(pvm[name]), silent = TRUE)
-    if (class(version)[1] == "try-error") version <- NA
+    version <- package_version(pvm[name])
     if (!is.na(version)) {
       # CRAN
       if (name %in% rownames(availables.binary[["CRAN"]])) {
