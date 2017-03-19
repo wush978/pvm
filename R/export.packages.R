@@ -285,7 +285,7 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
                             sprintf("url::%s", args)
                           }),
                           "bioc" = stop("TODO:bioc"),
-                          stop("Unknown remote type")
+                          stop(sprintf("Unknown remote type: %s", x["RemoteType"]))
     )
   } else {
     retval$repository <- "CRAN"
