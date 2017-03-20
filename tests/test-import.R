@@ -25,8 +25,6 @@ result <- lapply(dir("pvm", pattern = "yml", full.names = TRUE), function(path) 
       if (!is.na(version)) {
         # CRAN
         stopifnot(pkgs[pkg,"Version"] == version)
-      } else {
-        stop("TODO")
       }
     }
   }
