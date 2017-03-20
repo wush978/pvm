@@ -188,7 +188,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
   installers <- lapply(names(pvm)[is.target], function(name) {
     force(name)
     if (name == "R") {
-      target.Rversion <- paste(head(strsplit(pvm[name], ".", TRUE)[[1]], 2), collapse = ".")
+      target.Rversion <- paste(utils::head(strsplit(pvm[name], ".", TRUE)[[1]], 2), collapse = ".")
       if (Rversion != target.Rversion) {
         warning(sprintf("The version of R is not matched. Your version is %s and the exported version is %s", Rversion, target.Rversion))
       }

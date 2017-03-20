@@ -20,7 +20,7 @@
     attr(pvm.dst, "order") <- seq_along(pvm.dst)
     pvm.dst
   } else {
-    src <- tail(src, -1)
+    src <- utils::tail(src, -1)
     current.order <- NA
     is.order <- grepl("^(\\d+):$", src)
     first.colon <- sapply(gregexpr("^[^:]+:", src), attr, "match.length")
@@ -266,6 +266,7 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   retval$deps <- deps
   if (!is.na(x["RemoteType"])) {
     retval$repository <- switch(x["RemoteType"], 
+                          "cran" = x["Version"],
                           "github" = local({
                             if (is.na(x["RemoteSubdir"])) {
                               sprintf("github::repo=%s/%s@%s", x["RemoteUsername"], x["RemoteRepo"], x["RemoteSha"])
