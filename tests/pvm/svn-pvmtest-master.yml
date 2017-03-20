@@ -1,0 +1,3 @@
+__version__: 0.2
+1:
+  pvmtest: svn::url=https://github.com/wush978/pvmtest/trunk
