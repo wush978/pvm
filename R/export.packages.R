@@ -272,7 +272,16 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
                             } else {
                               sprintf("github::repo=%s/%s/%s@%s", x["RemoteUsername"], x["RemoteRepo"], x["RemoteSubdir"], x["RemoteSha"])
                             }}),
-                          "git" = stop("TODO:git"),
+                          "git" = local({
+                            args <- list()
+                            args[["url"]] <- x["RemoteUrl"]
+                            if (!is.na(x["RemoteRef"])) args[["branch"]] <- x["RemoteRef"]
+                            if (!is.na(x["RemoteSubdir"])) args[["subdir"]] <- x["RemoteSubdir"]
+                            args <- paste(sapply(names(args), function(name) {
+                              sprintf("%s=%s", name, args[[name]])
+                            }), collapse = "&")
+                            sprintf("git::%s", args)
+                          }),
                           "bitbucket" = stop("TODO:bitbucket"),
                           "svn" = stop("TODO:svn"),
                           "local" = stop("TODO:local"),
