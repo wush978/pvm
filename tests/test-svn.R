@@ -1,0 +1,10 @@
+
+if (Sys.getenv("TEST_PVM_INIT") != "TRUE") quit("no")
+library(remotes)
+library(pvm)
+lib.loc <- tempfile(fileext = ".lib")
+dir.create(lib.loc)
+remotes::install_svn("https://github.com/wush978/pvmtest/trunk", lib = lib.loc)
+export.packages(pvm.path <- tempfile(fileext = ".yml"), lib.loc = lib.loc)
+yaml::yaml.load_file(pvm.path)
+file.copy(pvm.path, "pvm/svn-pvmtest-master.yml")

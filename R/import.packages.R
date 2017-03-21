@@ -22,13 +22,22 @@
   }
 }
 
-.get.remotes.installer <- function(pkg, lib) {
-  force(pkg)
+.get.remotes.installer <- function(repo, lib) {
+  force(repo)
   force(lib)
-  repos <- strsplit(pkg$repository, split = "::", fixed = TRUE)[[1]]
+  argv <- strsplit(repo, split = "::", fixed = TRUE)[[1]]
+  method <- argv[1]
+  tokens <- strsplit(argv[2], split = "&", fixed = TRUE)
+  retval <- list()
+  for(token in tokens) {
+    kv <- strsplit(token, split = "=", fixed = TRUE)[[1]]
+    retval[[kv[1]]] <- kv[2]
+  }
+  retval[["lib"]] <- lib
+  retval[["dependencies"]] <- FALSE
   remotes.env <- asNamespace("remotes")
   function() {
-    remotes.env[[sprintf("install_%s", repos[1])]](repos[2], lib = lib, dependencies = FALSE)
+    do.call(remotes.env[[sprintf("install_%s", method)]], retval)
   }
 }
 
@@ -84,6 +93,17 @@ metamran.update <- function(verbose = TRUE) {
   base::invisible(NULL)
 }
 
+.compare.version <- function(v1, v2, operator) {
+  if (is.na(v1)) FALSE else if (is.na(v2)) FALSE else operator(v1, v2)
+}
+
+package_version <- function(x) {
+  retval <- try(base::package_version(x), silent = TRUE)
+  if (class(retval)[1] == "try-error") {
+    NA
+  } else retval
+}
+
 #'Import packages
 #'
 #'Install the package with the specific version according to the YAML file which is created by \code{\link{export.packages}}.
@@ -108,46 +128,39 @@ metamran.update <- function(verbose = TRUE) {
 #'import.packages()
 #'}
 import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE, verbose = TRUE, strict.version = TRUE) {
-  pvm <- yaml::yaml.load_file(file)
-  pvm <- .pvmrize(pvm)
+  pvm <- .upgrade.yaml(file)
   pkg.list <- utils::installed.packages(lib.loc, ...)
   varg <- list(...)
   is.target <- logical(length(pvm))
-  is.target[] <- TRUE
+  is.target[] <- FALSE
   names(is.target) <- names(pvm)
   # remove installed packages / base / recommended
   for(name in names(pvm)) {
-    pkg <- pvm[[name]]
-    if (!is.na(pkg$priority)) {
-      if (pkg$priority == "recommended") {
-        is.target[name] <- import.recommended
-      } else is.target[name] <- FALSE
-    }
-    if (!is.target[name]) next
     if (name %in% rownames(pkg.list)) {
-      version <- package_version(pvm[[name]]$version)
-      installed.version <- package_version(pkg.list[name,"Version"])
-      if (strict.version) {
-        if (installed.version == version) {
+      if (!is.na(pkg.list[name, "Priority"])) {
+        if (pkg.list[name, "Priority"] == "base") {
           is.target[name] <- FALSE
           next
         }
-      } else {
-        if (installed.version >= version) {
-          is.target[name] <- FALSE
+        if (pkg.list[name, "Priority"] == "recommended") {
+          is.target[name] <- import.recommended
           next
         }
       }
-    }
+      target.version <- package_version(pvm[name])
+      current.version <- package_version(pkg.list[name, "Version"])
+      if (!is.na(target.version)) if (target.version == current.version) {
+        is.target[name] <- FALSE
+        next
+      }
+    } # name %in% rownames(pkg.list)
+    is.target[name] <- TRUE
   }
-  pre.installed <- names(which(!is.target))
-  schedule <- sort(pvm, pre.installed = pre.installed)
   # check CRAN
   contrib.urls <- utils::contrib.url(repos, "source")
   if (repos["CRAN"] == "@CRAN@") {
     repos <- getOption("repos")
   }
-  names(contrib.urls) <- names(repos)
   availables.src <- lapply(contrib.urls, function(contrib.url) {
     utils::available.packages(contriburl = contrib.url)
   })
@@ -158,7 +171,6 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       utils::available.packages(contriburl = contrib.url)
     })
   }
-(repos)
   archives <- lapply(contrib.urls, function(contrib.url) {
     tryCatch({
       con <- gzcon(url(base::sprintf("%s/Meta/archive.rds", contrib.url), "rb"))
@@ -166,84 +178,98 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       readRDS(con)
     }, warning = function(e) list(), error = function(e) list())
   })
-  names(availables.src) <- 
+  names(contrib.urls) <- 
     names(availables.binary) <- 
+    names(availables.src) <- 
     names(archives) <- 
     names(repos)
-  # installation
-  for(pkg.turn in schedule) {
-    if (verbose) base::cat(base::sprintf("Installing %s ...\n", paste(pkg.turn, collapse = " ")))
-    install.turn <- lapply(pkg.turn, function(pkg.name) {
-      pkg <- pvm[[pkg.name]]
-      if (verbose) base::cat(base::sprintf("Installing %s (%s)...\n", pkg$name, pkg$version))
-      target.version <- package_version(pkg$version)
-      if (pkg$repository == "CRAN") {
-        if (target.version == package_version(availables.binary[["CRAN"]][pkg$name,"Version"])) {
-          if (verbose) base::cat(base::sprintf("Install %s (%s) from CRAN\n", pkg$name, pkg$version))
-          .retval <- .get.utils.installer(pkg$name, lib.loc, repos, type = base::.Platform$pkgType)
-          return(.retval)
-        } else if (target.version < package_version(availables.binary[["CRAN"]][pkg$name,"Version"])) {
-          # Search archives
-          type <- .Platform$pkgType
-          if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks")) {
-            if (verbose) base::cat("Checking if there is a binary package in MRAN from local dataset\n")
-            Rversion <- sprintf("%s.%s", R.version$major, strsplit(R.version$minor, ".", fixed = TRUE)[[1]][1])
-            .check_metamran()
-            meta <- .meta$metamran[[sprintf("%s_%s", pkg$name, pkg$version)]]
-            if (!is.null(meta)) {
-              meta.match <- Filter(function(x) {
-                x$type == type & x$Rversion == Rversion
-              }, meta)
-              if (length(meta.match) == 1) {
-                if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", pkg$name, pkg$version, meta.match[[1]]$end, type))
-                .retval <- .get.utils.installer(pkg$name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
-                return(.retval)
-              }
-            }
-            if (verbose) base::cat("Checking if there is a binary package in MRAN from the internet\n")
-            meta <- try(yaml::yaml.load_file(url(base::sprintf("https://wush978.github.io/metamran/%s/%s/info.yml", pkg$name, pkg$version))), silent = TRUE)
-            if (class(meta)[1] != "try-error") {
-              meta.match <- Filter(function(x) {
-                x$type == type & x$Rversion == Rversion
-              }, meta)
-              if (length(meta.match) == 1) {
-                if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", pkg$name, pkg$version, meta.match[[1]]$end, type))
-                .retval <- .get.utils.installer(pkg$name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
-                return(.retval)
-              }
-            }
-          }
-          if (verbose) base::cat("Checking if there is a source package in CRAN...\n")
-          if (!is.null(archives[["CRAN"]][[pkg$name]])) {
-            .ar <- archives[["CRAN"]][[pkg$name]]
-            .filename <- sprintf("%s/%s_%s.tar.gz", pkg$name, pkg$name, pkg$version)
-            if (.filename %in% rownames(.ar)) {
-              if (verbose) base::cat(base::sprintf("Install source package %s (%s) from archive of CRAN\n", pkg$name, pkg$version))
-              .retval <- .get.archive.installer(base::sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), lib.loc)
+  Rversion <- sprintf("%s.%s", R.version$major, strsplit(R.version$minor, ".", fixed = TRUE)[[1]][1])
+  # get installers
+  installers <- lapply(names(pvm)[is.target], function(name) {
+    force(name)
+    if (name == "R") {
+      target.Rversion <- paste(utils::head(strsplit(pvm[name], ".", TRUE)[[1]], 2), collapse = ".")
+      if (Rversion != target.Rversion) {
+        warning(sprintf("The version of R is not matched. Your version is %s and the exported version is %s", Rversion, target.Rversion))
+      }
+      return(NULL)
+    }
+    if (verbose) base::cat(base::sprintf("Installing %s (%s) ...\n", name, pvm[name]))
+    version <- package_version(pvm[name])
+    if (!is.na(version)) {
+      # CRAN
+      if (name %in% rownames(availables.binary[["CRAN"]])) {
+        binary.version <- package_version(availables.binary[["CRAN"]][name,"Version"])
+      } else {
+        binary.version <- NA
+      }
+      if (name %in% rownames(availables.src[["CRAN"]])) {
+        src.version <- package_version(availables.src[["CRAN"]][name,"Version"])
+      } else {
+        src.version <- NA
+      }
+      if (.compare.version(version, binary.version, `==`)) {
+        # Found binaries on CRAN
+        if (verbose) base::cat(base::sprintf("Install %s (%s) from CRAN\n", name, pvm[name]))
+        .retval <- .get.utils.installer(name, lib.loc, repos["CRAN"], type = base::.Platform$pkgType)
+        return(.retval)
+      } else if (.compare.version(version, binary.version, `<`)) {
+        # The version is older than CRAN, check MRAN
+        type <- .Platform$pkgType
+        if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks")) {
+          .check_metamran()
+          meta <- .meta$metamran[[sprintf("%s_%s", name, pvm[name])]]
+          if (!is.null(meta)) {
+            meta.match <- Filter(function(x) {
+              x$type == type & x$Rversion == Rversion
+            }, meta)
+            if (length(meta.match) == 1) {
+              if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", name, pvm[name], meta.match[[1]]$end, type))
+              .retval <- .get.utils.installer(name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
               return(.retval)
             }
           }
-          stop(base::sprintf("Failed to find %s (%s) from CRAN", pkg$name, pkg$version))
-        } else if (target.version == package_version(availables.src[["CRAN"]][pkg$name,"Version"])) {
-          if (verbose) base::cat(base::sprintf("Install source package %s (%s) from CRAN\n", pkg$name, pkg$version))
-          .retval <- .get.utils.installer(pkg$name, lib.loc, repos, type = "source")
-          return(.retval)
-        } else {
-          stop(base::sprintf("Failed to find %s (%s) from CRAN", pkg$name, pkg$version))
+          if (verbose) base::cat("Checking if there is a binary package in MRAN from the internet\n")
+          meta <- try(yaml::yaml.load_file(url(base::sprintf("https://wush978.github.io/metamran/%s/%s/info.yml", name, pvm[name]))), silent = TRUE)
+          if (class(meta)[1] != "try-error") {
+            meta.match <- Filter(function(x) {
+              x$type == type & x$Rversion == Rversion
+            }, meta)
+            if (length(meta.match) == 1) {
+              if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", name, pvm[name], meta.match[[1]]$end, type))
+              .retval <- .get.utils.installer(name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
+              return(.retval)
+            }
+          }
+        } # check type
+        if (verbose) base::cat("Checking if there is a source package in CRAN...\n")
+        if (!is.null(archives[["CRAN"]][[name]])) {
+          .ar <- archives[["CRAN"]][[name]]
+          .filename <- sprintf("%s/%s_%s.tar.gz", name, name, pvm[name])
+          if (.filename %in% rownames(.ar)) {
+            if (verbose) base::cat(base::sprintf("Install source package %s (%s) from archive of CRAN\n", name, pvm[name]))
+            .retval <- .get.archive.installer(base::sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), lib.loc)
+            return(.retval)
+          }
         }
-      } else {
-        if (verbose) base::cat(base::sprintf("Install %s (%s) from %s\n", pkg$name, pkg$version, pkg$repository))
-        .retval <- .get.remotes.installer(pkg, lib.loc)
+        stop(base::sprintf("Failed to find %s (%s) from CRAN", name, pvm[name]))
+        # older version
+      } else if (.compare.version(version, src.version, `==`)) {
+        if (verbose) base::cat(base::sprintf("Install source package %s (%s) from CRAN\n", name, pvm[name]))
+        .retval <- .get.utils.installer(name, lib.loc, repos["CRAN"], type = "source")
         return(.retval)
+      } else {
+        stop(base::sprintf("Failed to find %s (%s) from CRAN", name, pvm[name]))
       }
-    })
-    if (dryrun) {
-      print(install.turn)
     } else {
-      lapply(install.turn, function(f) {
-        f()
-      })
+      # Non-CRAN
+      if (verbose) base::cat(base::sprintf("Install %s from %s\n", name, pvm[name]))
+      .retval <- .get.remotes.installer(pvm[name], lib.loc)
+      return(.retval)
     }
+  })
+  if (!dryrun) for(installer in installers) {
+    if (!is.null(installer)) installer()
   }
 }
 
