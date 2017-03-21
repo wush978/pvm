@@ -231,7 +231,7 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
 
 .create.node.environment <- function(x, name, version, priority, dict) {
   retval <- x
-  if (!is.null(dict[[name]])) TRUE
+  if (!is.null(dict[[name]])) return(TRUE)
   retval$name <- name
   package_version(version)
   retval$version <- version
@@ -243,7 +243,7 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
 }
 
 .create.node.character <- function(x, dict, error.out = FALSE) {
-  if (!is.null(dict[[x["Package"]]])) TRUE
+  if (!is.null(dict[[x["Package"]]])) return(TRUE)
   dep <- .na2empty(x[c("Depends", "Imports", "LinkingTo")])
   dep <- Reduce(.join.dependency, dep)
   deps <- .parse.dep(dep)
