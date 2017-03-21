@@ -157,7 +157,7 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
       .check.last <- NULL
       while(!all(.check <- apply(pkg.list, 1, .create.node.character, dict))) {
         if (isTRUE(all.equal(.check, .check.last))) {
-          .create.node.character(pkg.list[1,], dict, TRUE)
+          .create.node.character(pkg.list[which(!.check.last)[1],], dict, TRUE)
           stop(sprintf("Requirements of %s are not matched", paste(names(which(!.check.last)), collapse = ",")))
         }
         .check.last <- .check
