@@ -157,8 +157,15 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
       .check.last <- NULL
       while(!all(.check <- apply(pkg.list, 1, .create.node.character, dict))) {
         if (isTRUE(all.equal(.check, .check.last))) {
-          .create.node.character(pkg.list[which(!.check.last)[1],], dict, TRUE)
-          stop(sprintf("Requirements of %s are not matched", paste(names(which(!.check.last)), collapse = ",")))
+          failed.index <- which(!.check.last)
+          for(missing.index in failed.index) {
+            required.pkgs <- .create.node.character(pkg.list[missing.index,], dict, TRUE)
+            existed.but.not.fulfilled.pkgs <- required.pkgs[!required.pkgs %in% pkg.list[failed.index,"Package"]]
+            if (length(existed.but.not.fulfilled.pkgs) > 0) {
+              stop(sprintf("Requirements of %s are not matched. (Please check the following packages: %s)", pkg.list[missing.index,"Package"], paste(existed.but.not.fulfilled.pkgs, collapse = ",")))
+            }
+          }
+          stop(sprintf("Requirements of %s are not matched.", paste(pkg.list[failed.index, "Package"], collapse = ",")))
         }
         .check.last <- .check
       }
@@ -250,7 +257,8 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   if (length(deps) > 0) {
     if (!all(sapply(deps, .check.dep, dict = dict))) {
       required.pkgs <- sapply(deps, "[[", "name")[!sapply(deps, .check.dep, dict = dict)]
-      if (error.out) stop(sprintf("The package %s requires following missing packages: %s", x["Package"], paste(required.pkgs, collapse = ",")))
+      # if (error.out) stop(sprintf("The package %s requires following missing packages: %s", x["Package"], paste(required.pkgs, collapse = ",")))
+      if (error.out) return(required.pkgs)
       return(FALSE)
     }
     parent <- sapply(deps, "[[", "name")
