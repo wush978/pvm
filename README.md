@@ -60,12 +60,12 @@ pvm::import.packages()
 
 Here are examples of specifications of this package:
 
-- github: `github::repo=wush978/pvm@master`
+- github: `github::repo=wush978/slidifyLibraries@422a92cd51a15a224d4be3f9d239012f4ffce874`
 
 That is to say, you should see the following paragraph in `pvm.yml` if you export a non-CRAN `pvm` package:
 
 ```yml
-  pvm: github::repo=wush978/pvm@master
+  slidifyLibraries: github::repo=wush978/slidifyLibraries@422a92cd51a15a224d4be3f9d239012f4ffce874
 ```
 
 During `import.packages`, `pvm` will install the package from github via `remotes::install_github("wush978/pvm@master")`.
