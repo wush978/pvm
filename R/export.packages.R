@@ -148,6 +148,9 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
     pkg.list.base <- pkg.list.raw[which(pkg.list.priority == "base"),, drop = FALSE]
     pkg.list.recommended <- pkg.list.raw[which(pkg.list.priority == "recommended"),, drop = FALSE]
     pkg.list.target <- pkg.list.raw[which(is.na(pkg.list.priority)),, drop = FALSE]
+    if ("pvm" %in% rownames(pkg.list.target)) {
+      pkg.list.target <- pkg.list.target[- which(rownames(pkg.list.target) == "pvm"), ]
+    }
     # Constructing package graph
     dict <- new.env()
     # init nodes for "base" and "R"
