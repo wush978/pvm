@@ -216,7 +216,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       } else if (.compare.version(version, binary.version, `<`)) {
         # The version is older than CRAN, check MRAN
         type <- .Platform$pkgType
-        if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks")) {
+        if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks", "mac.binary.el-capitan")) {
           .check_metamran()
           meta <- .meta$metamran[[sprintf("%s_%s", name, pvm[name])]]
           if (!is.null(meta)) {
