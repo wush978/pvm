@@ -2,8 +2,9 @@
 library(git2r, ".lib")
 library(yaml, ".lib")
 if (!file.exists(repo.path <- "gh-pages")) {
-  dir.create(repo.path, showWarnings = FALSE)
-  git2r::clone(url = "https://github.com/wush978/metamran", branch = "gh-pages", local_path = repos.path)
+  # dir.create(repo.path, showWarnings = FALSE)
+  # I suggest to use command line: git clone --depth 1 -b gh-pages https://github.com/wush978/metamran gh-pages
+  git2r::clone(url = "https://github.com/wush978/metamran", branch = "gh-pages", local_path = repo.path)
 }
 repo <- git2r::repository(repo.path)
 git2r::pull(repo = repo)
@@ -24,3 +25,4 @@ for(info in infos) {
 assign(".date", date, envir = metamran)
 close(pb)
 save(metamran, file = "../data/metamran.rda", compress = "bzip2")
+  
