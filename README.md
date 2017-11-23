@@ -32,8 +32,10 @@ pvm::export.packages()
 - It will check the dependencies and export to `pvm.yml`.
 - The exported yaml, the `pvm.yml`, file should be like this:
 ```
-ABCoptim: 0.13.11
-Rcpp: 0.12.9
+__version__: 0.2
+1:
+  proto: 1.0.0
+  rstudioapi: 0.5
 ```
 - Only version is specified if you want to install the package from CRAN/MRAN
 - If you have non-CRAN packages, please modify the content of `pvm.yml`.
@@ -58,14 +60,12 @@ pvm::import.packages()
 
 Here are examples of specifications of this package:
 
-- github: `github::wush978/pvm`
-- bitbucket: `bitbucket::wush978/pvm`
-- url: `url::https://github.com/wush978/pvm/archive/master.zip`
-- svn: `svn::svn://github.com/wush978/pvm/trunk`
-- git: `git::git://github.com/wush978/pvm.git`
+- github: `github::repo=wush978/slidifyLibraries@422a92cd51a15a224d4be3f9d239012f4ffce874`
 
 That is to say, you should see the following paragraph in `pvm.yml` if you export a non-CRAN `pvm` package:
 
 ```yml
-pvm: github::wush978/pvm
+  slidifyLibraries: github::repo=wush978/slidifyLibraries@422a92cd51a15a224d4be3f9d239012f4ffce874
 ```
+
+During `import.packages`, `pvm` will install the package from github via `remotes::install_github("wush978/pvm@master")`.
