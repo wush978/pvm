@@ -213,10 +213,10 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
         if (verbose) base::cat(base::sprintf("Install %s (%s) from CRAN\n", name, pvm[name]))
         .retval <- .get.utils.installer(name, lib.loc, repos["CRAN"], type = base::.Platform$pkgType)
         return(.retval)
-      } else if (.compare.version(version, binary.version, `<`)) {
-        # The version is older than CRAN, check MRAN
+      } else {
+        # There is no proper binary version in CRAN, check MRAN
         type <- .Platform$pkgType
-        if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks")) {
+        if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks", "mac.binary.el-capitan")) {
           .check_metamran()
           meta <- .meta$metamran[[sprintf("%s_%s", name, pvm[name])]]
           if (!is.null(meta)) {
@@ -254,12 +254,6 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
         }
         stop(base::sprintf("Failed to find %s (%s) from CRAN", name, pvm[name]))
         # older version
-      } else if (.compare.version(version, src.version, `==`)) {
-        if (verbose) base::cat(base::sprintf("Install source package %s (%s) from CRAN\n", name, pvm[name]))
-        .retval <- .get.utils.installer(name, lib.loc, repos["CRAN"], type = "source")
-        return(.retval)
-      } else {
-        stop(base::sprintf("Failed to find %s (%s) from CRAN", name, pvm[name]))
       }
     } else {
       # Non-CRAN
