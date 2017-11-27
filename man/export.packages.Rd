@@ -2,7 +2,7 @@
 % Please edit documentation in R/export.packages.R
 \name{export.packages}
 \alias{export.packages}
-\title{Export packages}
+\title{Export Packages}
 \usage{
 export.packages(file = "pvm.yml", pvm = NULL, ...)
 }

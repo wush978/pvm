@@ -116,6 +116,7 @@ package_version <- function(x) {
 #'@param dryrun logical value. If \code{TRUE}, then \code{import.packages} only check the CRAN/MRAN without installing the packages.
 #'@param verbose logical value. If \code{TRUE}, show more information.
 #'@param strict.version logical value. If \code{TRUE}, install the package even if there is a later version of the package in the \code{lib.loc}.
+#'@param Ncpus integer. The number of parallel processes to use for a parallel install of more than one packages.
 #'@export
 #'@examples
 #'\dontrun{
@@ -270,7 +271,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
         for(o in seq_len(max(attr(pvm, "order")))) {
           current.targets <- Filter(f = function(x) !is.null(x), installers.order[[paste(o)]])
           parallel::parLapplyLB(cl, current.targets, function(f) {
-            capture.output(f())
+            f()
           })
         }
       }, finally = {
