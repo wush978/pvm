@@ -276,7 +276,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       }, finally = {
         parallel::stopCluster(cl)
       })
-    else {
+    } else {
       for(f in installers) {
         if (is.null(f)) next
         f()
