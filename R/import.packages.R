@@ -116,6 +116,7 @@ package_version <- function(x) {
 #'@param dryrun logical value. If \code{TRUE}, then \code{import.packages} only check the CRAN/MRAN without installing the packages.
 #'@param verbose logical value. If \code{TRUE}, show more information.
 #'@param strict.version logical value. If \code{TRUE}, install the package even if there is a later version of the package in the \code{lib.loc}.
+#'@param Ncpus integer. The number of parallel processes to use for a parallel install of more than one packages.
 #'@export
 #'@examples
 #'\dontrun{
@@ -127,7 +128,7 @@ package_version <- function(x) {
 #'.libPaths(".lib")
 #'import.packages()
 #'}
-import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE, verbose = TRUE, strict.version = TRUE) {
+import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE, verbose = TRUE, strict.version = TRUE, Ncpus = getOption("Ncpus", 1L)) {
   pvm <- .upgrade.yaml(file)
   pkg.list <- utils::installed.packages(lib.loc, ...)
   varg <- list(...)
@@ -262,8 +263,26 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       return(.retval)
     }
   })
-  if (!dryrun) for(installer in installers) {
-    if (!is.null(installer)) installer()
+  if (!dryrun) {
+    if (Ncpus > 1L) {
+      installers.order <- split(installers, paste(attr(pvm, "order")[is.target]))
+      cl <- parallel::makeCluster(Ncpus)
+      tryCatch({
+        for(o in seq_len(max(attr(pvm, "order")))) {
+          current.targets <- Filter(f = function(x) !is.null(x), installers.order[[paste(o)]])
+          parallel::parLapplyLB(cl, current.targets, function(f) {
+            f()
+          })
+        }
+      }, finally = {
+        parallel::stopCluster(cl)
+      })
+    } else {
+      for(f in installers) {
+        if (is.null(f)) next
+        f()
+      }
+    }
   }
 }
 

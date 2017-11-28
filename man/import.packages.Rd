@@ -6,7 +6,7 @@
 \usage{
 import.packages(file = "pvm.yml", lib.loc = NULL, ...,
   repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE,
-  verbose = TRUE, strict.version = TRUE)
+  verbose = TRUE, strict.version = TRUE, Ncpus = getOption("Ncpus", 1L))
 }
 \arguments{
 \item{file}{the filename of the YAML file.}
@@ -24,6 +24,8 @@ import.packages(file = "pvm.yml", lib.loc = NULL, ...,
 \item{verbose}{logical value. If \code{TRUE}, show more information.}
 
 \item{strict.version}{logical value. If \code{TRUE}, install the package even if there is a later version of the package in the \code{lib.loc}.}
+
+\item{Ncpus}{integer. The number of parallel processes to use for a parallel install of more than one packages.}
 }
 \description{
 Install the package with the specific version according to the YAML file which is created by \code{\link{export.packages}}.
