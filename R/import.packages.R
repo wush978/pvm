@@ -60,36 +60,7 @@
 #'The package \code{git2r} is required to update.
 #'@export
 metamran.update <- function(verbose = TRUE) {
-  .branch <- base::readLines("https://api.github.com/repos/wush978/metamran/git/refs/heads/gh-pages", warn = FALSE)
-  .branch <- base::strsplit(.branch, ",")[[1]]
-  .commit.url <- base::regmatches(.branch, base::regexec('\\"url":"([^"]+)"', .branch))
-  .commit.url <- utils::tail(Filter(f = function(x) length(x) > 1, .commit.url), 1)[[1]][2]
-  .commit <- base::readLines(.commit.url, warn = FALSE)
-  .date <- base::regmatches(.commit, base::regexec('"message":"Update: (.{10})"', .commit))[[1]][2]
-  .date <- base::as.Date(.date)
-  if (verbose) base::cat(base::sprintf("The updating date of remote dataset: %s\n", .date))
-  base::stopifnot(!is.na(.date))
-  .check_metamran()
-  if (verbose) base::cat(base::sprintf("The updating date of local dataset: %s\n", .meta$metamran$.date))
-  if (.date > .meta$metamran$.date) {
-    if (verbose) base::cat("Updating data...\n")
-    git2r::clone(url = "https://github.com/wush978/metamran", branch = "gh-pages", local_path = repo.path <- tempfile())
-    infos <- dir(repo.path, pattern = "info.yml", full.names = TRUE, recursive = TRUE)
-    metamran <- new.env(parent = emptyenv())
-    if (verbose) pb <- utils::txtProgressBar(max = length(infos), style = 3)
-    for(info in infos) {
-      version <- base::basename(base::dirname(info))
-      package <- base::basename(base::dirname(base::dirname(info)))
-      obj <- yaml::yaml.load_file(info)
-      key <- sprintf("%s_%s", package, version)
-      base::assign(key, obj, envir = metamran)
-      if (verbose) utils::setTxtProgressBar(pb, utils::getTxtProgressBar(pb) + 1)
-    }
-    if (verbose) close(pb)
-    base::assign(".date", .date, envir = metamran)
-    base::save(metamran, file = file.path(system.file(package = "pvm"), "metamran.rda"), compress = "bzip2")
-    if (verbose) base::cat("Done\n")
-  }
+  download.file(url = "http://pvm.datascienceandr.org/pvm/metamran.rda", destfile = file.path(system.file(package = "pvm"), "metamran.rda"), quiet = !verbose, mode = "wb")
   base::invisible(NULL)
 }
 
@@ -231,7 +202,11 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
             }
           }
           if (verbose) base::cat("Checking if there is a binary package in MRAN from the internet\n")
-          meta <- try(yaml::yaml.load_file(url(base::sprintf("https://wush978.github.io/metamran/%s/%s/info.yml", name, pvm[name]))), silent = TRUE)
+          #meta <- try(yaml::yaml.load_file(url(base::sprintf("https://wush978.github.io/metamran/%s/%s/info.yml", name, pvm[name]))), silent = TRUE)
+          meta <- try(
+            yaml::yaml.load_file(url(base::sprintf("http://pvm.datascienceandr.org/pvm/%s/info.yml.gz", name))),
+            silent = TRUE
+          )[[pvm[name]]]
           if (class(meta)[1] != "try-error") {
             meta.match <- Filter(function(x) {
               x$type == type & x$Rversion == Rversion
