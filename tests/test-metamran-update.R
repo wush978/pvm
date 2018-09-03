@@ -1,0 +1,2 @@
+library(pvm)
+metamran.update()

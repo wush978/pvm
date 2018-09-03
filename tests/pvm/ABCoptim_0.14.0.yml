@@ -1,5 +1,5 @@
 __version__: 0.2
 1:
-  Rcpp: 0.12.9
+  Rcpp: 0.12.17
 2:
   ABCoptim: 0.13.11

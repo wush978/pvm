@@ -1,12 +1,13 @@
 .mran.url <- function(date) sprintf("https://mran.revolutionanalytics.com/snapshot/%s", date)
 
-.get.archive.installer <- function(url, lib) {
+.get.archive.installer <- function(url, lib, pkg) {
   force(url)
   force(lib)
   function() {
     .pkg.path <- base::tempfile(fileext = ".tar.gz")
     utils::download.file(url, destfile = .pkg.path)
     utils::install.packages(.pkg.path, lib = lib, repos = NULL)
+    base::stopifnot(base::dir.exists(base::file.path(lib, pkg)))
   }
 }
 
@@ -15,14 +16,12 @@
   force(lib)
   force(repos)
   function() {
-    # .origin.option <- getOption("install.packages.compile.from.source")
-    # options(install.packages.compile.from.source = "never")
-    # on.exit(options(install.packages.compile.from.source = .origin.option))
     utils::install.packages(pkgs = pkgs, lib = lib, repos = repos, dependencies = FALSE, type = type)
+    base::stopifnot(base::dir.exists(base::file.path(lib, pkgs)))
   }
 }
 
-.get.remotes.installer <- function(repo, lib) {
+.get.remotes.installer <- function(repo, lib, pkg) {
   force(repo)
   force(lib)
   argv <- strsplit(repo, split = "::", fixed = TRUE)[[1]]
@@ -37,17 +36,27 @@
   retval[["dependencies"]] <- FALSE
   remotes.env <- asNamespace("remotes")
   function() {
-    do.call(remotes.env[[sprintf("install_%s", method)]], retval)
+    base::do.call(remotes.env[[base::sprintf("install_%s", method)]], retval)
+    base::stopifnot(base::dir.exists(base::file.path(lib, pkg)))
   }
 }
 
-.meta <- new.env()
-.check_metamran <- function() {
-  metamran.path <- base::system.file("metamran.rda", package = "pvm")
-  if (metamran.path != "") {
-    base::load(metamran.path, envir = .meta)
+.get.url <- function() {
+  # https://storage.googleapis.com/metamran-deploy/rda/bin-macosx-el-capitan-contrib-3.4.rda
+  . <- utils::contrib.url("", base::.Platform$pkgType)
+  . <- base::substring(., 2, base::nchar(.))
+  if (substring(., 1, 3) == "bin") {
+    .name <- base::gsub("/", "-", ., fixed = TRUE)
+  } else {
+    # source package
+    .name <- "src-contrib"
   }
-  if (is.null(.meta$metamran)) utils::data(list = "metamran", package = "pvm", envir = .meta)
+  base::sprintf("https://storage.googleapis.com/metamran-deploy/rda/%s.rda", .name)
+}
+
+.get.dst <- function() {
+  .url <- .get.url()
+  base::system.file(base::file.path("rda", base::basename(.url)), package = .packageName)
 }
 
 #'Update the Index of packages on MRAN Daily Snapshots
@@ -60,37 +69,37 @@
 #'The package \code{git2r} is required to update.
 #'@export
 metamran.update <- function(verbose = TRUE) {
-  .branch <- base::readLines("https://api.github.com/repos/wush978/metamran/git/refs/heads/gh-pages", warn = FALSE)
-  .branch <- base::strsplit(.branch, ",")[[1]]
-  .commit.url <- base::regmatches(.branch, base::regexec('\\"url":"([^"]+)"', .branch))
-  .commit.url <- utils::tail(Filter(f = function(x) length(x) > 1, .commit.url), 1)[[1]][2]
-  .commit <- base::readLines(.commit.url, warn = FALSE)
-  .date <- base::regmatches(.commit, base::regexec('"message":"Update: (.{10})"', .commit))[[1]][2]
-  .date <- base::as.Date(.date)
-  if (verbose) base::cat(base::sprintf("The updating date of remote dataset: %s\n", .date))
-  base::stopifnot(!is.na(.date))
-  .check_metamran()
-  if (verbose) base::cat(base::sprintf("The updating date of local dataset: %s\n", .meta$metamran$.date))
-  if (.date > .meta$metamran$.date) {
-    if (verbose) base::cat("Updating data...\n")
-    git2r::clone(url = "https://github.com/wush978/metamran", branch = "gh-pages", local_path = repo.path <- tempfile())
-    infos <- dir(repo.path, pattern = "info.yml", full.names = TRUE, recursive = TRUE)
-    metamran <- new.env(parent = emptyenv())
-    if (verbose) pb <- utils::txtProgressBar(max = length(infos), style = 3)
-    for(info in infos) {
-      version <- base::basename(base::dirname(info))
-      package <- base::basename(base::dirname(base::dirname(info)))
-      obj <- yaml::yaml.load_file(info)
-      key <- sprintf("%s_%s", package, version)
-      base::assign(key, obj, envir = metamran)
-      if (verbose) utils::setTxtProgressBar(pb, utils::getTxtProgressBar(pb) + 1)
+  .url <- .get.url()
+  .dst <- .get.dst()
+  if (verbose) base::cat(base::sprintf("Download metamran from %s to %s\n", .url, .dst))
+  utils::download.file(.url, .dst, mode = "wb")
+}
+
+.metamran.find <- function(pkg, version) {
+  .url <- .get.url()
+  .dst <- .get.dst()
+  if (base::file.exists(.dst)) {
+    .env <- base::new.env()
+    base::load(.dst, envir = .env)
+    package.id <- base::local({
+      . <- base::match(pkg, .env$pkg$package)
+      .env$pkg$package_id[.]
+    })
+    version.id <- base::local({
+      . <- base::match(version, .env$ver$version)
+      .env$ver$version_id[.]
+    })
+    if (is.na(package.id) || is.na(version.id)) return(FALSE)
+    . <- base::subset(.env$metamran, .env$metamran$package_id == package.id)
+    . <- base::subset(., .$version_id == version.id)
+    if (base::nrow(.) == 1) {
+      return(base::as.Date(.$start))
+    } else {
+      return(FALSE)
     }
-    if (verbose) close(pb)
-    base::assign(".date", .date, envir = metamran)
-    base::save(metamran, file = file.path(system.file(package = "pvm"), "metamran.rda"), compress = "bzip2")
-    if (verbose) base::cat("Done\n")
+  } else {
+    FALSE
   }
-  base::invisible(NULL)
 }
 
 .compare.version <- function(v1, v2, operator) {
@@ -216,40 +225,20 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
         return(.retval)
       } else {
         # There is no proper binary version in CRAN, check MRAN
-        type <- .Platform$pkgType
-        if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks", "mac.binary.el-capitan")) {
-          .check_metamran()
-          meta <- .meta$metamran[[sprintf("%s_%s", name, pvm[name])]]
-          if (!is.null(meta)) {
-            meta.match <- Filter(function(x) {
-              x$type == type & x$Rversion == Rversion
-            }, meta)
-            if (length(meta.match) == 1) {
-              if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", name, pvm[name], meta.match[[1]]$end, type))
-              .retval <- .get.utils.installer(name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
-              return(.retval)
-            }
-          }
-          if (verbose) base::cat("Checking if there is a binary package in MRAN from the internet\n")
-          meta <- try(yaml::yaml.load_file(url(base::sprintf("https://wush978.github.io/metamran/%s/%s/info.yml", name, pvm[name]))), silent = TRUE)
-          if (class(meta)[1] != "try-error") {
-            meta.match <- Filter(function(x) {
-              x$type == type & x$Rversion == Rversion
-            }, meta)
-            if (length(meta.match) == 1) {
-              if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", name, pvm[name], meta.match[[1]]$end, type))
-              .retval <- .get.utils.installer(name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
-              return(.retval)
-            }
-          }
-        } # check type
+        .type <- .Platform$pkgType
+        .date <- .metamran.find(name, pvm[name])
+        if (class(.date) == "Date") {
+          if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", name, pvm[name], .date, .type))
+          .retval <- .get.utils.installer(name, lib.loc, .mran.url(.date), type = .type)
+          return(.retval)
+        }
         if (verbose) base::cat("Checking if there is a source package in CRAN...\n")
         if (!is.null(archives[["CRAN"]][[name]])) {
           .ar <- archives[["CRAN"]][[name]]
           .filename <- sprintf("%s/%s_%s.tar.gz", name, name, pvm[name])
           if (.filename %in% rownames(.ar)) {
             if (verbose) base::cat(base::sprintf("Install source package %s (%s) from archive of CRAN\n", name, pvm[name]))
-            .retval <- .get.archive.installer(base::sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), lib.loc)
+            .retval <- .get.archive.installer(base::sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), lib.loc, name)
             return(.retval)
           }
         }
@@ -259,14 +248,14 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
     } else {
       # Non-CRAN
       if (verbose) base::cat(base::sprintf("Install %s from %s\n", name, pvm[name]))
-      .retval <- .get.remotes.installer(pvm[name], lib.loc)
+      .retval <- .get.remotes.installer(pvm[name], lib.loc, name)
       return(.retval)
     }
   })
   if (!dryrun) {
     if (Ncpus > 1L) {
       installers.order <- split(installers, paste(attr(pvm, "order")[is.target]))
-      cl <- parallel::makeCluster(Ncpus)
+      cl <- parallel::makeCluster(Ncpus, outfile = "")
       tryCatch({
         for(o in seq_len(max(attr(pvm, "order")))) {
           current.targets <- Filter(f = function(x) !is.null(x), installers.order[[paste(o)]])
@@ -285,10 +274,3 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
     }
   }
 }
-
-#'@name metamran
-#'@title The Index of packages on MRAN Daily Snapshots
-#'@description
-#'The dataset contains the beginning dates and ending dates of all versioned packages on CRAN. 
-#'@source \url{https://mran.revolutionanalytics.com} and \url{https://github.com/wush978/metamran}
-NULL
