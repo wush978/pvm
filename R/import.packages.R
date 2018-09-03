@@ -52,20 +52,20 @@
 
 .get.url <- function() {
   # https://storage.googleapis.com/metamran-deploy/rda/bin-macosx-el-capitan-contrib-3.4.rda
-  . <- contrib.url("", base::.Platform$pkgType)
-  . <- substring(., 2, nchar(.))
+  . <- utils::contrib.url("", base::.Platform$pkgType)
+  . <- base::substring(., 2, base::nchar(.))
   if (substring(., 1, 3) == "bin") {
-    .name <- gsub("/", "-", ., fixed = TRUE)
+    .name <- base::gsub("/", "-", ., fixed = TRUE)
   } else {
-    # source
+    # source package
     .name <- "src-contrib"
   }
-  sprintf("https://storage.googleapis.com/metamran-deploy/rda/%s.rda", .name)
+  base::sprintf("https://storage.googleapis.com/metamran-deploy/rda/%s.rda", .name)
 }
 
 .get.dst <- function() {
   .url <- .get.url()
-  file.path(pvm:::.__NAMESPACE__.$path, "rda", basename(.url))
+  base::file.path(pvm:::.__NAMESPACE__.$path, "rda", basename(.url))
 }
 
 #'Update the Index of packages on MRAN Daily Snapshots
@@ -80,29 +80,29 @@
 metamran.update <- function(verbose = TRUE) {
   .url <- .get.url()
   .dst <- .get.dst()
-  if (verbose) cat(sprintf("Download metamran from %s to %s\n", .url, .dst))
-  download.file(.url, .dst, mode = "wb")
+  if (verbose) base::cat(base::sprintf("Download metamran from %s to %s\n", .url, .dst))
+  utils::download.file(.url, .dst, mode = "wb")
 }
 
 .metamran.find <- function(pkg, version) {
   .url <- .get.url()
   .dst <- .get.dst()
-  if (file.exists(.dst)) {
-    .env <- new.env()
-    load(.dst, envir = .env)
-    package.id <- local({
-      . <- match(pkg, .env$pkg$package)
+  if (base::file.exists(.dst)) {
+    .env <- base::new.env()
+    base::load(.dst, envir = .env)
+    package.id <- base::local({
+      . <- base::match(pkg, .env$pkg$package)
       .env$pkg$package_id[.]
     })
-    version.id <- local({
-      . <- match(version, .env$ver$version)
+    version.id <- base::local({
+      . <- base::match(version, .env$ver$version)
       .env$ver$version_id[.]
     })
     if (is.na(package.id) || is.na(version.id)) return(FALSE)
-    . <- base::subset(.env$metamran, package_id == package.id)
-    . <- base::subset(., version_id == version.id)
-    if (nrow(.) == 1) {
-      return(as.Date(.$start))
+    . <- base::subset(.env$metamran, .env$metamran$package_id == package.id)
+    . <- base::subset(., .$metamran$version_id == version.id)
+    if (base::nrow(.) == 1) {
+      return(base::as.Date(.$start))
     } else {
       return(FALSE)
     }
