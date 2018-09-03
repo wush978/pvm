@@ -1,15 +1,13 @@
 .mran.url <- function(date) sprintf("https://mran.revolutionanalytics.com/snapshot/%s", date)
 
-.get.archive.installer <- function(url, lib) {
+.get.archive.installer <- function(url, lib, pkg) {
   force(url)
   force(lib)
   function() {
     .pkg.path <- base::tempfile(fileext = ".tar.gz")
     utils::download.file(url, destfile = .pkg.path)
-    base::withCallingHandlers(
-      utils::install.packages(.pkg.path, lib = lib, repos = NULL),
-      warning = function(w) stop(w)
-    )
+    utils::install.packages(.pkg.path, lib = lib, repos = NULL)
+    base::stopifnot(base::dir.exists(base::file.path(lib, pkg)))
   }
 }
 
@@ -18,17 +16,12 @@
   force(lib)
   force(repos)
   function() {
-    # .origin.option <- getOption("install.packages.compile.from.source")
-    # options(install.packages.compile.from.source = "never")
-    # on.exit(options(install.packages.compile.from.source = .origin.option))
-    base::withCallingHandlers(
-      utils::install.packages(pkgs = pkgs, lib = lib, repos = repos, dependencies = FALSE, type = type),
-      warning = function(w) stop(w)
-    )
+    utils::install.packages(pkgs = pkgs, lib = lib, repos = repos, dependencies = FALSE, type = type)
+    base::stopifnot(base::dir.exists(base::file.path(lib, pkgs)))
   }
 }
 
-.get.remotes.installer <- function(repo, lib) {
+.get.remotes.installer <- function(repo, lib, pkg) {
   force(repo)
   force(lib)
   argv <- strsplit(repo, split = "::", fixed = TRUE)[[1]]
@@ -43,10 +36,8 @@
   retval[["dependencies"]] <- FALSE
   remotes.env <- asNamespace("remotes")
   function() {
-    withCallingHandlers(
-      do.call(remotes.env[[sprintf("install_%s", method)]], retval),
-      warning = function(w) stop(w)
-    )
+    base::do.call(remotes.env[[base::sprintf("install_%s", method)]], retval)
+    base::stopifnot(base::dir.exists(base::file.path(lib, pkg)))
   }
 }
 
@@ -247,7 +238,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
           .filename <- sprintf("%s/%s_%s.tar.gz", name, name, pvm[name])
           if (.filename %in% rownames(.ar)) {
             if (verbose) base::cat(base::sprintf("Install source package %s (%s) from archive of CRAN\n", name, pvm[name]))
-            .retval <- .get.archive.installer(base::sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), lib.loc)
+            .retval <- .get.archive.installer(base::sprintf("%s/Archive/%s", contrib.urls["CRAN"], .filename), lib.loc, name)
             return(.retval)
           }
         }
@@ -257,14 +248,14 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
     } else {
       # Non-CRAN
       if (verbose) base::cat(base::sprintf("Install %s from %s\n", name, pvm[name]))
-      .retval <- .get.remotes.installer(pvm[name], lib.loc)
+      .retval <- .get.remotes.installer(pvm[name], lib.loc, name)
       return(.retval)
     }
   })
   if (!dryrun) {
     if (Ncpus > 1L) {
       installers.order <- split(installers, paste(attr(pvm, "order")[is.target]))
-      cl <- parallel::makeCluster(Ncpus)
+      cl <- parallel::makeCluster(Ncpus, outfile = "")
       tryCatch({
         for(o in seq_len(max(attr(pvm, "order")))) {
           current.targets <- Filter(f = function(x) !is.null(x), installers.order[[paste(o)]])
