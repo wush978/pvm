@@ -65,7 +65,7 @@
 
 .get.dst <- function() {
   .url <- .get.url()
-  base::file.path(pvm:::.__NAMESPACE__.$path, "rda", basename(.url))
+  base::system.file(base::file.path("rda", base::basename(.url)), package = .packageName)
 }
 
 #'Update the Index of packages on MRAN Daily Snapshots
@@ -100,7 +100,7 @@ metamran.update <- function(verbose = TRUE) {
     })
     if (is.na(package.id) || is.na(version.id)) return(FALSE)
     . <- base::subset(.env$metamran, .env$metamran$package_id == package.id)
-    . <- base::subset(., .$metamran$version_id == version.id)
+    . <- base::subset(., .$version_id == version.id)
     if (base::nrow(.) == 1) {
       return(base::as.Date(.$start))
     } else {
@@ -283,10 +283,3 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
     }
   }
 }
-
-#'@name metamran
-#'@title The Index of packages on MRAN Daily Snapshots
-#'@description
-#'The dataset contains the beginning dates and ending dates of all versioned packages on CRAN. 
-#'@source \url{https://mran.revolutionanalytics.com} and \url{https://github.com/wush978/metamran}
-NULL

@@ -6,7 +6,7 @@
 - Windows : [![Build status](https://ci.appveyor.com/api/projects/status/it85uq9rlya3f07t/branch/master?svg=true)](https://ci.appveyor.com/project/wush978/pvm/branch/master)
 
 
-[![Coverage Status](https://img.shields.io/coveralls/wush978/FeatureHashing.svg)](https://coveralls.io/r/wush978/FeatureHashing?branch=master)
+[![Coverage Status](https://img.shields.io/coveralls/wush978/pvm.svg)](https://coveralls.io/r/wush978/pvm?branch=master)
 
 ## Feature
 
