@@ -6,7 +6,10 @@
   function() {
     .pkg.path <- base::tempfile(fileext = ".tar.gz")
     utils::download.file(url, destfile = .pkg.path)
-    utils::install.packages(.pkg.path, lib = lib, repos = NULL)
+    base::withCallingHandlers(
+      utils::install.packages(.pkg.path, lib = lib, repos = NULL),
+      warning = function(w) stop(w)
+    )
   }
 }
 
@@ -18,7 +21,10 @@
     # .origin.option <- getOption("install.packages.compile.from.source")
     # options(install.packages.compile.from.source = "never")
     # on.exit(options(install.packages.compile.from.source = .origin.option))
-    utils::install.packages(pkgs = pkgs, lib = lib, repos = repos, dependencies = FALSE, type = type)
+    base::withCallingHandlers(
+      utils::install.packages(pkgs = pkgs, lib = lib, repos = repos, dependencies = FALSE, type = type),
+      warning = function(w) stop(w)
+    )
   }
 }
 
@@ -37,22 +43,29 @@
   retval[["dependencies"]] <- FALSE
   remotes.env <- asNamespace("remotes")
   function() {
-    do.call(remotes.env[[sprintf("install_%s", method)]], retval)
+    withCallingHandlers(
+      do.call(remotes.env[[sprintf("install_%s", method)]], retval),
+      warning = function(w) stop(w)
+    )
   }
 }
 
 .get.url <- function() {
   # https://storage.googleapis.com/metamran-deploy/rda/bin-macosx-el-capitan-contrib-3.4.rda
-  . <- contrib.url("")
+  . <- contrib.url("", base::.Platform$pkgType)
+  . <- substring(., 2, nchar(.))
   if (substring(., 1, 3) == "bin") {
-    . <- substring(., 2, nchar(.))
-    . <- gsub("/", "-", ., fixed = TRUE)
-    .name <- sprintf("%s-%s.rda", ., sprintf("%s.%s", base::getRversion()$major, base::getRversion()$minor))
+    .name <- gsub("/", "-", ., fixed = TRUE)
   } else {
     # source
-    .name <- "src-contrib.rda"
+    .name <- "src-contrib"
   }
-  sprintf("https://storage.googleapis.com/metamran-deploy/rda/%s", .name)
+  sprintf("https://storage.googleapis.com/metamran-deploy/rda/%s.rda", .name)
+}
+
+.get.dst <- function() {
+  .url <- .get.url()
+  file.path(pvm:::.__NAMESPACE__.$path, "rda", basename(.url))
 }
 
 #'Update the Index of packages on MRAN Daily Snapshots
@@ -66,13 +79,36 @@
 #'@export
 metamran.update <- function(verbose = TRUE) {
   .url <- .get.url()
-  .dst <- file.path(pvm:::.__NAMESPACE__.$path, "rda", basename(.url))
+  .dst <- .get.dst()
   if (verbose) cat(sprintf("Download metamran from %s to %s\n", .url, .dst))
   download.file(.url, .dst, mode = "wb")
 }
 
 .metamran.find <- function(pkg, version) {
-  browser()
+  .url <- .get.url()
+  .dst <- .get.dst()
+  if (file.exists(.dst)) {
+    .env <- new.env()
+    load(.dst, envir = .env)
+    package.id <- local({
+      . <- match(pkg, .env$pkg$package)
+      .env$pkg$package_id[.]
+    })
+    version.id <- local({
+      . <- match(version, .env$ver$version)
+      .env$ver$version_id[.]
+    })
+    if (is.na(package.id) || is.na(version.id)) return(FALSE)
+    . <- base::subset(.env$metamran, package_id == package.id)
+    . <- base::subset(., version_id == version.id)
+    if (nrow(.) == 1) {
+      return(as.Date(.$start))
+    } else {
+      return(FALSE)
+    }
+  } else {
+    FALSE
+  }
 }
 
 .compare.version <- function(v1, v2, operator) {
@@ -198,36 +234,13 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
         return(.retval)
       } else {
         # There is no proper binary version in CRAN, check MRAN
-        browser()
-        
-        # type <- .Platform$pkgType
-        # 
-        # if (type %in% c("win.binary", "mac.binary", "mac.binary.mavericks", "mac.binary.el-capitan")) {
-        #   
-        #   meta <- .meta$metamran[[sprintf("%s_%s", name, pvm[name])]]
-        #   if (!is.null(meta)) {
-        #     meta.match <- Filter(function(x) {
-        #       x$type == type & x$Rversion == Rversion
-        #     }, meta)
-        #     if (length(meta.match) == 1) {
-        #       if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", name, pvm[name], meta.match[[1]]$end, type))
-        #       .retval <- .get.utils.installer(name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
-        #       return(.retval)
-        #     }
-        #   }
-        #   if (verbose) base::cat("Checking if there is a binary package in MRAN from the internet\n")
-        #   meta <- try(yaml::yaml.load_file(url(base::sprintf("https://wush978.github.io/metamran/%s/%s/info.yml", name, pvm[name]))), silent = TRUE)
-        #   if (class(meta)[1] != "try-error") {
-        #     meta.match <- Filter(function(x) {
-        #       x$type == type & x$Rversion == Rversion
-        #     }, meta)
-        #     if (length(meta.match) == 1) {
-        #       if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", name, pvm[name], meta.match[[1]]$end, type))
-        #       .retval <- .get.utils.installer(name, lib.loc, .mran.url(meta.match[[1]]$end), type = type)
-        #       return(.retval)
-        #     }
-        #   }
-        # } # check type
+        .type <- .Platform$pkgType
+        .date <- .metamran.find(name, pvm[name])
+        if (class(.date) == "Date") {
+          if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", name, pvm[name], .date, .type))
+          .retval <- .get.urls.installer(name, lib.loc, .mran.url(.date), type = type)
+          return(.retval)
+        }
         if (verbose) base::cat("Checking if there is a source package in CRAN...\n")
         if (!is.null(archives[["CRAN"]][[name]])) {
           .ar <- archives[["CRAN"]][[name]]
