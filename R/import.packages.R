@@ -238,7 +238,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
         .date <- .metamran.find(name, pvm[name])
         if (class(.date) == "Date") {
           if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", name, pvm[name], .date, .type))
-          .retval <- .get.utils.installer(name, lib.loc, .mran.url(.date), type = type)
+          .retval <- .get.utils.installer(name, lib.loc, .mran.url(.date), type = .type)
           return(.retval)
         }
         if (verbose) base::cat("Checking if there is a source package in CRAN...\n")
