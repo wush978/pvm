@@ -264,7 +264,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
   if (!dryrun) {
     if (Ncpus > 1L) {
       installers.order <- split(installers, paste(attr(pvm, "order")[is.target]))
-      cl <- parallel::makeCluster(Ncpus)
+      cl <- parallel::makeCluster(Ncpus, outfile = "")
       tryCatch({
         for(o in seq_len(max(attr(pvm, "order")))) {
           current.targets <- Filter(f = function(x) !is.null(x), installers.order[[paste(o)]])
