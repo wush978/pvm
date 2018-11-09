@@ -1,5 +1,12 @@
 .mran.url <- function(date) sprintf("https://mran.revolutionanalytics.com/snapshot/%s", date)
 
+.check.installation <- function(lib, pkg) {
+  if(is.null(lib)) {
+    lib <- .libPaths()[1]
+  }
+  base::stopifnot(base::dir.exists(base::file.path(lib, pkg)))
+}
+
 .get.archive.installer <- function(url, lib, pkg) {
   force(url)
   force(lib)
@@ -7,7 +14,7 @@
     .pkg.path <- base::tempfile(fileext = ".tar.gz")
     utils::download.file(url, destfile = .pkg.path)
     utils::install.packages(.pkg.path, lib = lib, repos = NULL)
-    base::stopifnot(base::dir.exists(base::file.path(lib, pkg)))
+    .check.installation(lib, pkg)
   }
 }
 
@@ -17,7 +24,7 @@
   force(repos)
   function() {
     utils::install.packages(pkgs = pkgs, lib = lib, repos = repos, dependencies = FALSE, type = type)
-    base::stopifnot(base::dir.exists(base::file.path(lib, pkgs)))
+    .check.installation(lib, pkgs)
   }
 }
 
@@ -37,7 +44,7 @@
   remotes.env <- asNamespace("remotes")
   function() {
     base::do.call(remotes.env[[base::sprintf("install_%s", method)]], retval)
-    base::stopifnot(base::dir.exists(base::file.path(lib, pkg)))
+    .check.installation(lib, pkg)
   }
 }
 
