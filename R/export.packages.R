@@ -164,9 +164,9 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
 #'This function will analysis the package graph before installation.
 #'Only those packages whose version are lower than required version are going to be installed.
 #'@param name character vector. The package that the user wants to install.
-#'@param pkg.list.raw the output of \code{available.packages}.
+#'@param pkg.list.raw the output of \code{utils::available.packages}.
 #'@export
-install.packages.via.graph <- function(name, pkg.list.raw = available.packages(fields = .check.fields), ...) {
+install.packages.via.graph <- function(name, pkg.list.raw = utils::available.packages(fields = .check.fields), ...) {
   pg <- get.pkg.installation.graph(name, pkg.list.raw, ...)
   tmp.yaml <- tempfile(fileext = ".yml")
   write(.to.yaml(pg), tmp.yaml)
@@ -185,7 +185,7 @@ get.pkg.installation.graph <- function(name, pkg.list.raw = available.packages(f
   schedule <- sort(result)
   result <- .pvmrize(result, schedule)
   # remove base packages
-  ip <- installed.packages(...)
+  ip <- utils::installed.packages(...)
   check.result <- targets %in% rownames(ip)
   names(check.result) <- names(result)
   for(obj in rev(result)) {
@@ -193,7 +193,7 @@ get.pkg.installation.graph <- function(name, pkg.list.raw = available.packages(f
       for(dep in obj$deps) {
         if (check.result[dep$name]) {
           if (dep$name %in% rownames(ip)) {
-            if (!is.null(dep$op)) check.result[dep$name] <- get(dep$op, envir = base::baseenv())(packageVersion(dep$name), package_version(dep$version))
+            if (!is.null(dep$op)) check.result[dep$name] <- get(dep$op, envir = base::baseenv())(utils::packageVersion(dep$name), package_version(dep$version))
           } else {
             check.result[dep$name] <- FALSE
           }
@@ -210,12 +210,12 @@ get.pkg.installation.graph <- function(name, pkg.list.raw = available.packages(f
 }
 
 get.base.pkg.list <- function() {
-  pkg.list.installed <- installed.packages(fields = .check.fields)
+  pkg.list.installed <- utils::installed.packages(fields = .check.fields)
   . <- pkg.list.installed[which(pkg.list.installed[,"Priority"] == "base"),,drop=FALSE]
   rownames(.)
 }
 
-build.pkg.graph <- function(pkg.list.raw, pkg.list.installed = installed.packages(fields = .check.fields)) {
+build.pkg.graph <- function(pkg.list.raw, pkg.list.installed = utils::installed.packages(fields = .check.fields)) {
   # check duplication of the same package with different version
   # it will happen if length(lib.loc) > 1
   pkg.list.raw <- local({
