@@ -1,7 +1,7 @@
 Package: pvm
 Type: Package
 Title: Package Version Manager for R
-Version: 0.4.0
+Version: 0.4.1
 Author: Wush Wu
 Maintainer: Wush Wu <wush@gmail.com>
 Description: Export the installed packages and their version to a YAML file. 
@@ -11,6 +11,6 @@ Description: Export the installed packages and their version to a YAML file.
 License: GPL(>= 3)
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1
 Depends: R(>= 2.10)
 Suggests: remotes, git2r, yaml, parallel

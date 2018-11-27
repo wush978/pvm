@@ -4,9 +4,10 @@
 \alias{import.packages}
 \title{Import packages}
 \usage{
-import.packages(file = "pvm.yml", lib.loc = NULL, ...,
-  repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE,
-  verbose = TRUE, strict.version = TRUE, Ncpus = getOption("Ncpus", 1L))
+import.packages(file = "pvm.yml", lib.loc = NULL, pvm = NULL, ...,
+  repos = getOption("repos"), import.recommended = FALSE,
+  dryrun = FALSE, verbose = TRUE, strict.version = TRUE,
+  Ncpus = getOption("Ncpus", 1L))
 }
 \arguments{
 \item{file}{the filename of the YAML file.}
