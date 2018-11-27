@@ -21,6 +21,7 @@
     pvm.dst
   } else {
     src <- utils::tail(src, -1)
+    if (length(src) == 0) return(structure(character(0), order = integer(0)))
     current.order <- NA
     is.order <- grepl("^(\\d+):$", src)
     first.colon <- sapply(gregexpr("^[^:]+:", src), attr, "match.length")
@@ -56,7 +57,10 @@
     pvm <- .pvmrize(pvm, schedule)
   }
   if (any(diff(sapply(pvm, attr, "order")) < 0)) {
-    schedule <- sort(pvm)
+    schedule <- split(pvm, sapply(pvm, attr, "order"))
+    schedule <- schedule[order(as.integer(names(schedule)))]
+    schedule <- lapply(schedule, names)
+    names(schedule) <- NULL
     pvm <- pvm[unlist(schedule)]
     pvm <- .pvmrize(pvm, schedule)
   }
@@ -124,60 +128,8 @@
 #'@export
 export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   if (is.null(pvm)) {
-    pkg.list.raw <- utils::installed.packages(..., fields = .check.fields)
-    # check duplication of the same package with different version
-    # it will happen if length(lib.loc) > 1
-    pkg.list.raw <- local({
-      pkgs <- rownames(pkg.list.raw)
-      .i <- which(duplicated(pkgs))
-      dpkgs <- unique(pkgs[.i])
-      if (length(.i) == 0) pkg.list.raw else {
-        cat(sprintf("The following packages are duplicated: %s\n", paste(dpkgs, collapse = ",")))
-        cat("Pick the latest version\n")
-        .x1 <- pkg.list.raw[-.i,]
-        .x2 <- do.call(what = rbind, lapply(dpkgs, function(pkg) {
-          .x <- pkg.list.raw[which(pkg == pkgs),]
-          .v <- package_version(.x[,"Version"])
-          .x[which(max(.v) == .v)[1],,drop = FALSE]
-        }))
-        rbind(.x1, .x2)
-      }
-    })
-    
-    pkg.list.priority <- pkg.list.raw[,"Priority"]
-    pkg.list.base <- pkg.list.raw[which(pkg.list.priority == "base"),, drop = FALSE]
-    pkg.list.recommended <- pkg.list.raw[which(pkg.list.priority == "recommended"),, drop = FALSE]
-    pkg.list.target <- pkg.list.raw[which(is.na(pkg.list.priority)),, drop = FALSE]
-    if ("pvm" %in% rownames(pkg.list.target)) {
-      pkg.list.target <- pkg.list.target[- which(rownames(pkg.list.target) == "pvm"), ]
-    }
-    # Constructing package graph
-    dict <- new.env()
-    # init nodes for "base" and "R"
-    .create.node(new.env(parent = emptyenv()), "R", sprintf("%s.%s", R.version$major, R.version$minor), "base", dict)
-    .insert.node <- function(pkg.list) {
-      if (nrow(pkg.list) == 0) return(invisible(NULL))
-      .check.last <- NULL
-      while(!all(.check <- apply(pkg.list, 1, .create.node.character, dict))) {
-        if (isTRUE(all.equal(.check, .check.last))) {
-          failed.index <- which(!.check.last)
-          for(missing.index in failed.index) {
-            required.pkgs <- .create.node.character(pkg.list[missing.index,], dict, TRUE)
-            existed.but.not.fulfilled.pkgs <- required.pkgs[!required.pkgs %in% pkg.list[failed.index,"Package"]]
-            if (length(existed.but.not.fulfilled.pkgs) > 0) {
-              stop(sprintf("Requirements of %s are not matched. (Please check the following packages: %s)", pkg.list[missing.index,"Package"], paste(existed.but.not.fulfilled.pkgs, collapse = ",")))
-            }
-          }
-          stop(sprintf("Requirements of %s are not matched.", paste(pkg.list[failed.index, "Package"], collapse = ",")))
-        }
-        .check.last <- .check
-      }
-      invisible(pvm)
-    }
-    .insert.node(pkg.list.base)
-    .insert.node(pkg.list.recommended)
-    .insert.node(pkg.list.target)
-    .truncate(dict)
+    .ip <- utils::installed.packages(..., fields = .check.fields)
+    dict <- build.pkg.graph(.ip, .ip)
     pvm <- .pvmrize(dict, NULL)
     schedule <- sort(pvm)
     pvm <- pvm[unlist(schedule)]
@@ -207,6 +159,122 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   return(invisible(pvm))
 }
 
+#'Install Necessary via Analyzing Package Dependency Graph
+#'
+#'This function will analysis the package graph before installation.
+#'Only those packages whose version are lower than required version are going to be installed.
+#'
+#'@param name character vector. The package that the user wants to install.
+#'@param pkg.list.raw the output of \code{utils::available.packages}.
+#'@param ... arguments that will be passed to \code{utils::installed.packages}
+#'@examples
+#'\dontrun{
+#'  install.packages.via.graph("dplyr")
+#'}
+#'@export
+install.packages.via.graph <- function(name, pkg.list.raw = utils::available.packages(fields = .check.fields), ...) {
+  pg <- get.pkg.installation.graph(name, pkg.list.raw, ...)
+  tmp.yaml <- tempfile(fileext = ".yml")
+  write(.to.yaml(pg), tmp.yaml)
+  import.packages(tmp.yaml)
+}
+
+get.pkg.installation.graph <- function(name, pkg.list.raw = utils::available.packages(fields = .check.fields), ...) {
+  dp <- tools::package_dependencies(name, db = pkg.list.raw, recursive = TRUE)
+  targets <- lapply(name, function(.) {
+    setdiff(dp[[.]], get.base.pkg.list())
+  })
+  targets <- unique(unlist(targets))
+  targets <- c(name, targets)
+  dict <- build.pkg.graph(pkg.list.raw[targets,,drop=FALSE])
+  result <- .pvmrize(dict, NULL)
+  schedule <- sort(result)
+  result <- .pvmrize(result, schedule)
+  # remove base packages
+  ip <- utils::installed.packages(...)
+  check.result <- targets %in% rownames(ip)
+  names(check.result) <- names(result)
+  for(obj in rev(result)) {
+    if (!is.null(obj$deps)) {
+      for(dep in obj$deps) {
+        if (check.result[dep$name]) {
+          if (dep$name %in% rownames(ip)) {
+            if (!is.null(dep$op)) check.result[dep$name] <- get(dep$op, envir = base::baseenv())(utils::packageVersion(dep$name), package_version(dep$version))
+          } else {
+            check.result[dep$name] <- FALSE
+          }
+        }
+      }
+    }
+  }
+  result <- result[!check.result]
+  result <- .pvmrize(result, NULL)
+  result <- .pvmrize(Filter(function(x) {
+    if (is.na(x$priority)) TRUE else x$priority != "base"
+  }, result))
+  result
+}
+
+get.base.pkg.list <- function() {
+  pkg.list.installed <- utils::installed.packages(fields = .check.fields)
+  . <- pkg.list.installed[which(pkg.list.installed[,"Priority"] == "base"),,drop=FALSE]
+  rownames(.)
+}
+
+build.pkg.graph <- function(pkg.list.raw, pkg.list.installed = utils::installed.packages(fields = .check.fields)) {
+  # check duplication of the same package with different version
+  # it will happen if length(lib.loc) > 1
+  pkg.list.raw <- local({
+    pkgs <- rownames(pkg.list.raw)
+    .i <- which(duplicated(pkgs))
+    dpkgs <- unique(pkgs[.i])
+    if (length(.i) == 0) pkg.list.raw else {
+      cat(sprintf("The following packages are duplicated: %s\n", paste(dpkgs, collapse = ",")))
+      cat("Pick the latest version\n")
+      .x1 <- pkg.list.raw[-.i,]
+      .x2 <- do.call(what = rbind, lapply(dpkgs, function(pkg) {
+        .x <- pkg.list.raw[which(pkg == pkgs),]
+        .v <- package_version(.x[,"Version"])
+        .x[which(max(.v) == .v)[1],,drop = FALSE]
+      }))
+      rbind(.x1, .x2)
+    }
+  })
+  
+  pkg.list.priority <- pkg.list.raw[,"Priority"]
+  pkg.list.base <- pkg.list.installed[which(pkg.list.installed[,"Priority"] == "base"),,drop=FALSE]
+  pkg.list.recommended <- pkg.list.raw[which(pkg.list.priority == "recommended"),, drop = FALSE]
+  pkg.list.target <- pkg.list.raw[which(is.na(pkg.list.priority)),, drop = FALSE]
+  # Constructing package graph
+  dict <- new.env()
+  # init nodes for "base" and "R"
+  .create.node(new.env(parent = emptyenv()), "R", sprintf("%s.%s", R.version$major, R.version$minor), "base", dict)
+  .insert.node <- function(pkg.list) {
+    if (nrow(pkg.list) == 0) return(invisible(NULL))
+    .check.last <- NULL
+    while(!all(.check <- apply(pkg.list, 1, .create.node.character, dict))) {
+      if (isTRUE(all.equal(.check, .check.last))) {
+        failed.index <- which(!.check.last)
+        for(missing.index in failed.index) {
+          required.pkgs <- .create.node.character(pkg.list[missing.index,], dict, TRUE)
+          existed.but.not.fulfilled.pkgs <- required.pkgs[!required.pkgs %in% pkg.list[failed.index,"Package"]]
+          if (length(existed.but.not.fulfilled.pkgs) > 0) {
+            stop(sprintf("Requirements of %s are not matched. (Please check the following packages: %s)", pkg.list[missing.index,"Package"], paste(existed.but.not.fulfilled.pkgs, collapse = ",")))
+          }
+        }
+        stop(sprintf("Requirements of %s are not matched.", paste(pkg.list[failed.index, "Package"], collapse = ",")))
+      }
+      .check.last <- .check
+    }
+  }
+  .insert.node(pkg.list.base)
+  .insert.node(pkg.list.recommended)
+  .insert.node(pkg.list.target)
+  .truncate(dict)
+  .clean.base.pkg.from.deps(dict)
+  dict
+}
+
 .pvmrize <- function(x, schedule = NULL) {
   x <- lapply(x, function(x) {
     x <- as.list(x)
@@ -215,14 +283,11 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   })
   class(x) <- "pvm"
   if (!is.null(schedule)) {
-    i.start <- 1
-    i.end.vec <- cumsum(sapply(schedule, length))
-    for(j in seq_along(i.end.vec)) {
-      i.end <- i.end.vec[j]
-      for(i in seq(i.start, i.end, by = 1)) {
-        attr(x[[i]], "order") <- j
+    for(i in seq_along(schedule)) {
+      . <- which(names(x) %in% schedule[[i]])
+      for(j in .) {
+        attr(x[[j]], "order") <- i
       }
-      i.start <- i.end + 1
     }
   }
   x
@@ -377,3 +442,23 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   }
 }
 
+.clean.base.pkg.from.deps <- function(dict) {
+  base.pkgs <- c("R", get.base.pkg.list())
+  rm(list = base.pkgs[base.pkgs %in% ls(dict)], envir = dict)
+  for(name in ls(dict)) {
+    if (!is.null(dict[[name]]$deps)) {
+      deps <- dict[[name]]$deps
+      for(i in rev(seq_along(deps))) {
+        if (! deps[[i]]$name %in% ls(dict)) {
+          deps[[i]] <- NULL
+        }
+      }
+      dict[[name]]$deps <- deps
+    }
+    if (!is.null(dict[[name]]$parent)) {
+      parent <- dict[[name]]$parent
+      parent <- parent[parent %in% ls(dict)]
+      dict[[name]]$parent <-parent
+    }
+  }
+}
