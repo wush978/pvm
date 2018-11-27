@@ -144,7 +144,7 @@ package_version <- function(x) {
 #'.libPaths(".lib")
 #'import.packages()
 #'}
-import.packages <- function(file = "pvm.yml", lib.loc = NULL, pvm = NULL, ..., repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE, verbose = TRUE, strict.version = TRUE, Ncpus = getOption("Ncpus", 1L)) {
+import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOption("repos"), import.recommended = FALSE, dryrun = FALSE, verbose = TRUE, strict.version = TRUE, Ncpus = getOption("Ncpus", 1L)) {
   pvm <- .upgrade.yaml(file)
   pkg.list <- utils::installed.packages(lib.loc, ...)
   varg <- list(...)

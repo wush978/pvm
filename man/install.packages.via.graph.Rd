@@ -4,13 +4,13 @@
 \alias{install.packages.via.graph}
 \title{Install Necessary via Analyzing Package Dependency Graph}
 \usage{
-install.packages.via.graph(name, pkg.list.raw = available.packages(fields
-  = .check.fields), ...)
+install.packages.via.graph(name,
+  pkg.list.raw = utils::available.packages(fields = .check.fields), ...)
 }
 \arguments{
 \item{name}{character vector. The package that the user wants to install.}
 
-\item{pkg.list.raw}{the output of \code{available.packages}.}
+\item{pkg.list.raw}{the output of \code{utils::available.packages}.}
 }
 \description{
 This function will analysis the package graph before installation.
