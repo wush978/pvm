@@ -11,8 +11,15 @@ install.packages.via.graph(name,
 \item{name}{character vector. The package that the user wants to install.}
 
 \item{pkg.list.raw}{the output of \code{utils::available.packages}.}
+
+\item{...}{arguments that will be passed to \code{utils::installed.packages}}
 }
 \description{
 This function will analysis the package graph before installation.
 Only those packages whose version are lower than required version are going to be installed.
+}
+\examples{
+\dontrun{
+ install.packages.via.graph("dplyr")
+}
 }

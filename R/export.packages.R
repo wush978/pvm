@@ -159,12 +159,18 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
   return(invisible(pvm))
 }
 
-#'@title Install Necessary via Analyzing Package Dependency Graph
-#'@description
+#'Install Necessary via Analyzing Package Dependency Graph
+#'
 #'This function will analysis the package graph before installation.
 #'Only those packages whose version are lower than required version are going to be installed.
+#'
 #'@param name character vector. The package that the user wants to install.
 #'@param pkg.list.raw the output of \code{utils::available.packages}.
+#'@param ... arguments that will be passed to \code{utils::installed.packages}
+#'@examples
+#'\dontrun{
+#'  install.packages.via.graph("dplyr")
+#'}
 #'@export
 install.packages.via.graph <- function(name, pkg.list.raw = utils::available.packages(fields = .check.fields), ...) {
   pg <- get.pkg.installation.graph(name, pkg.list.raw, ...)
@@ -173,7 +179,7 @@ install.packages.via.graph <- function(name, pkg.list.raw = utils::available.pac
   import.packages(tmp.yaml)
 }
 
-get.pkg.installation.graph <- function(name, pkg.list.raw = available.packages(fields = .check.fields), ...) {
+get.pkg.installation.graph <- function(name, pkg.list.raw = utils::available.packages(fields = .check.fields), ...) {
   dp <- tools::package_dependencies(name, db = pkg.list.raw, recursive = TRUE)
   targets <- lapply(name, function(.) {
     setdiff(dp[[.]], get.base.pkg.list())
