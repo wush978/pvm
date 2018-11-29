@@ -1,12 +1,6 @@
+Sys.setenv("R_TESTS"="")
 library(pvm)
-print(R.version.string)
-R.date <- local({
-  m <- regexec("\\((.*)\\)$", R.version.string)
-  . <- regmatches(R.version.string, m)
-  . <- Filter(., f = function(.) length(.) == 2)
-  .[[1]][2]
-})
-R.date <- as.Date(R.date)
+R.date <- R.release.dates[sprintf("%s.%s", R.version$major, R.version$minor)]
 repos <- c(CRAN = sprintf("https://cran.microsoft.com/snapshot/%s", R.date + 7))
 options(repos = repos)
 install.packages("Rcpp")
