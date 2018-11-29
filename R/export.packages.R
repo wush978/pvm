@@ -192,8 +192,8 @@ get.pkg.installation.graph <- function(name, pkg.list.raw = utils::available.pac
   result <- .pvmrize(result, schedule)
   # remove base packages
   ip <- utils::installed.packages(...)
-  check.result <- targets %in% rownames(ip)
-  names(check.result) <- targets
+  check.result <- names(result) %in% rownames(ip)
+  names(check.result) <- names(result)
   for(obj in rev(result)) {
     if (!is.null(obj$deps)) {
       for(dep in obj$deps) {
