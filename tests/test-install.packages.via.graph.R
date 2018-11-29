@@ -1,4 +1,5 @@
 library(pvm)
+print(R.version.string)
 R.date <- local({
   m <- regexec("\\((.*)\\)$", R.version.string)
   . <- regmatches(R.version.string, m)
