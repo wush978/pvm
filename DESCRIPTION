@@ -1,7 +1,7 @@
 Package: pvm
 Type: Package
 Title: Package Version Manager for R
-Version: 0.4.2.2
+Version: 0.4.2.3
 Author: Wush Wu
 Maintainer: Wush Wu <wush@gmail.com>
 Description: Export the installed packages and their version to a YAML file. 
