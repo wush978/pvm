@@ -100,7 +100,7 @@ metamran.update <- function(verbose = TRUE) {
     . <- base::subset(.env$metamran, .env$metamran$package_id == package.id)
     . <- base::subset(., .$version_id == version.id)
     if (base::nrow(.) == 1) {
-      return(base::as.Date(.$start))
+      return(base::as.Date(.$end))
     } else {
       return(FALSE)
     }
