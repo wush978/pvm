@@ -252,7 +252,7 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
         .type <- .Platform$pkgType
         if (.type == "source") {
           if (verbose) base::cat(base::sprintf("Install %s (%s) from CRAN for type: %s\n", name, pvm[name], .type))
-          .retval <- .get.remotes.install_version.installer(name, version = pvm[name], lib = lib.loc, repos = repos["CRAN"], type = .type)
+          .retval <- .get.remotes.install_version.installer(name, version = pvm[name], lib = lib.loc, repo = repos["CRAN"], type = .type)
         }
         .date <- .metamran.find(name, pvm[name])
         if (class(.date) == "Date") {
