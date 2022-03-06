@@ -173,10 +173,14 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
 #'}
 #'@export
 install.packages.via.graph <- function(name, pkg.list.raw = utils::available.packages(fields = .check.fields), ...) {
-  pg <- get.pkg.installation.graph(name, pkg.list.raw, ...)
-  tmp.yaml <- tempfile(fileext = ".yml")
-  write(.to.yaml(pg), tmp.yaml)
-  import.packages(tmp.yaml)
+  if (.Platform$pkgType == "source") {
+    utils::install.packages(name)
+  } else {
+    pg <- get.pkg.installation.graph(name, pkg.list.raw, ...)
+    tmp.yaml <- tempfile(fileext = ".yml")
+    write(.to.yaml(pg), tmp.yaml)
+    import.packages(tmp.yaml)
+  }
 }
 
 get.pkg.installation.graph <- function(name, pkg.list.raw = utils::available.packages(fields = .check.fields), ...) {
