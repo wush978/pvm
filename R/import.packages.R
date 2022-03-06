@@ -28,6 +28,23 @@
   }
 }
 
+.get.remotes.install_version.installer <- function(pkg, version, repo, lib, type) {
+  force(repo)
+  force(lib)
+  argv <- list(
+    package = pkg,
+    version = version,
+    repos = repo,
+    lib = lib,
+    upgrade = "never",
+    type = type
+  )
+  function() {
+    base::do.call(remotes::install_version, argv)
+    .check.installation(lib, pkg)
+  }
+}
+
 .get.remotes.installer <- function(repo, lib, pkg) {
   force(repo)
   force(lib)
@@ -233,6 +250,10 @@ import.packages <- function(file = "pvm.yml", lib.loc = NULL, ..., repos = getOp
       } else {
         # There is no proper binary version in CRAN, check MRAN
         .type <- .Platform$pkgType
+        if (.type == "source") {
+          if (verbose) base::cat(base::sprintf("Install %s (%s) from CRAN for type: %s\n", name, pvm[name], .type))
+          .retval <- .get.remotes.install_version.installer(name, version = pvm[name], lib = lib.loc, repos = repos["CRAN"], type = .type)
+        }
         .date <- .metamran.find(name, pvm[name])
         if (class(.date) == "Date") {
           if (verbose) base::cat(base::sprintf("Install %s (%s) from MRAN snapshot of date %s for type: %s\n", name, pvm[name], .date, .type))
