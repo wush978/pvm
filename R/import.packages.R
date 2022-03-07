@@ -1,4 +1,4 @@
-.mran.url <- function(date) sprintf("https://cran.microsoft.com/snapshot/%s", date)
+.mran.url <- function(date) sprintf("https://mran.revolutionanalytics.com/snapshot/%s", date)
 
 .check.installation <- function(lib, pkg) {
   if(is.null(lib)) {
