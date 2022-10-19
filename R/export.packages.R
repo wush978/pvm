@@ -136,7 +136,7 @@ export.packages <- function(file = "pvm.yml", pvm = NULL, ...) {
     pvm <- .pvmrize(pvm, schedule)
     # remove base packages
     pvm <- .pvmrize(Filter(function(x) {
-      if (is.na(x$priority)) TRUE else x$priority != "base"
+      if (is.na(x$priority)) TRUE else !(x$priority %in% c("base", "recommended"))
     }, pvm))
     if (is.null(file)) return(invisible(pvm))
   }
